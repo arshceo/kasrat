@@ -47,6 +47,7 @@ class PoseAnalyzer {
   bool? _lockedIsLeftLegDominant;
   int _consecutiveLowConfidenceFrames = 0;
   double? _smoothedSquatAngle;
+  double? _smoothedPushupAngle;
   double? _standingHipDepth;
   double? _standingKneeDepth;
   int _standingBaselineFrames = 0;
@@ -214,32 +215,40 @@ class PoseAnalyzer {
     }
 
     final hasShoulders = leftShoulder != null && rightShoulder != null;
-    final shoulderWidth = hasShoulders ? (leftShoulder.x - rightShoulder.x).abs() : 0.0;
-    final torsoLength = hasShoulders ? (dominantHip.y - leftShoulder.y).abs() : 1.0;
-    
+    final shoulderWidth = hasShoulders
+        ? (leftShoulder.x - rightShoulder.x).abs()
+        : 0.0;
+    final torsoLength = hasShoulders
+        ? (dominantHip.y - leftShoulder.y).abs()
+        : 1.0;
+
     // Front profile if both shoulders are visible and horizontally separated somewhat reasonably
-    final isFrontProfile = hasShoulders && 
-        leftShoulder.likelihood > 0.5 && 
-        rightShoulder.likelihood > 0.5 && 
-        (shoulderWidth > torsoLength * 0.35); 
-    
-    // Process angles 
+    final isFrontProfile =
+        hasShoulders &&
+        leftShoulder.likelihood > 0.5 &&
+        rightShoulder.likelihood > 0.5 &&
+        (shoulderWidth > torsoLength * 0.35);
+
+    // Process angles
     double rawAngle = calculateAngle(dominantHip, dominantKnee, dominantAnkle);
-    
+
     // If facing the camera, the 2D joint angle often stays near 180 due to foreshortening.
     // We synthesize an effective angle interpreting the Y-axis compression of the femur.
     if (isFrontProfile) {
       final femurY = dominantKnee.y - dominantHip.y; // Positive when standing
-      final tibiaY = (dominantAnkle.y - dominantKnee.y).abs().clamp(1.0, double.infinity);
-      final depthRatio = (femurY / tibiaY).clamp(-0.5, 1.2); 
+      final tibiaY = (dominantAnkle.y - dominantKnee.y).abs().clamp(
+        1.0,
+        double.infinity,
+      );
+      final depthRatio = (femurY / tibiaY).clamp(-0.5, 1.2);
       // ratio ~ 1.0 = standing (180 deg)
       // ratio ~ 0.0 = parallel (90 deg)
       final syntheticAngle = 90.0 + (depthRatio * 90.0);
-      
+
       // Use the smaller (more bent) of the two to aggressively detect depth from the front
       rawAngle = min(rawAngle, syntheticAngle);
     }
-    
+
     _smoothedSquatAngle = _smoothedSquatAngle == null
         ? rawAngle
         : (_smoothedSquatAngle! * (1 - ExerciseConstants.squatAngleSmoothing)) +
@@ -391,6 +400,10 @@ class PoseAnalyzer {
   PoseAnalysisResult _analyzePushup(
     Map<PoseLandmarkType, PoseLandmark> landmarks,
   ) {
+    bool isGoodForm = true;
+    String? feedback;
+
+    final nose = landmarks[PoseLandmarkType.nose];
     final leftShoulder = landmarks[PoseLandmarkType.leftShoulder];
     final leftElbow = landmarks[PoseLandmarkType.leftElbow];
     final leftWrist = landmarks[PoseLandmarkType.leftWrist];
@@ -398,16 +411,18 @@ class PoseAnalyzer {
     final rightElbow = landmarks[PoseLandmarkType.rightElbow];
     final rightWrist = landmarks[PoseLandmarkType.rightWrist];
 
-    // Additional check for body straightness
+    // Additional checkpoints for full body lock
     final leftHip = landmarks[PoseLandmarkType.leftHip];
+    final rightHip = landmarks[PoseLandmarkType.rightHip];
+    final leftKnee = landmarks[PoseLandmarkType.leftKnee];
+    final rightKnee = landmarks[PoseLandmarkType.rightKnee];
     final leftAnkle = landmarks[PoseLandmarkType.leftAnkle];
+    final rightAnkle = landmarks[PoseLandmarkType.rightAnkle];
 
-    if (leftShoulder == null ||
-        leftElbow == null ||
-        leftWrist == null ||
-        rightShoulder == null ||
-        rightElbow == null ||
-        rightWrist == null) {
+    final hasLeftArm = leftShoulder != null && leftElbow != null && leftWrist != null;
+    final hasRightArm = rightShoulder != null && rightElbow != null && rightWrist != null;
+
+    if (!hasLeftArm && !hasRightArm) {
       return PoseAnalysisResult(
         phase: _currentPhase,
         repCount: _repCount,
@@ -416,31 +431,131 @@ class PoseAnalyzer {
       );
     }
 
-    final leftAngle = calculateAngle(leftShoulder, leftElbow, leftWrist);
-    final rightAngle = calculateAngle(rightShoulder, rightElbow, rightWrist);
-    final effectiveAngle = min(leftAngle, rightAngle);
+    final leftLikelihood = hasLeftArm ? (leftShoulder.likelihood + leftElbow.likelihood + leftWrist.likelihood) / 3 : 0.0;
+    final rightLikelihood = hasRightArm ? (rightShoulder.likelihood + rightElbow.likelihood + rightWrist.likelihood) / 3 : 0.0;
 
-    bool isGoodForm = (leftAngle - rightAngle).abs() < 30;
-    String? feedback;
+    final bool isLeftDominant = leftLikelihood > rightLikelihood;
+    final domShoulder = isLeftDominant ? leftShoulder! : rightShoulder!;
+    final domElbow = isLeftDominant ? leftElbow! : rightElbow!;
+    final domWrist = isLeftDominant ? leftWrist! : rightWrist!;
+    final domHip = isLeftDominant ? leftHip : rightHip;
+    final domKnee = isLeftDominant ? leftKnee : rightKnee;
+    final domAnkle = isLeftDominant ? leftAnkle : rightAnkle;
 
-    // Straight back check
-    if (leftHip != null && leftAnkle != null) {
-      final backAngle = calculateAngle(leftShoulder, leftHip, leftAnkle);
-      if (backAngle < 150) {
+    // Front vs Side profile checks
+    final hasBothShoulders = leftShoulder != null && rightShoulder != null;
+    final shoulderWidth = hasBothShoulders ? (leftShoulder.x - rightShoulder.x).abs() : 0.0;
+    final torsoLength = domHip != null ? (domHip.y - domShoulder.y).abs() : 1.0;
+    final isFrontProfile = hasBothShoulders &&
+        leftShoulder.likelihood > 0.5 &&
+        rightShoulder.likelihood > 0.5 &&
+        (domHip == null ? shoulderWidth > 100 : shoulderWidth > torsoLength * 0.4);
+
+    double rawAngle = 180.0;
+
+    if (isFrontProfile && hasLeftArm && hasRightArm) {
+      final lAngle = calculateAngle(leftShoulder, leftElbow, leftWrist);
+      final rAngle = calculateAngle(rightShoulder, rightElbow, rightWrist);
+
+      if ((lAngle - rAngle).abs() > 40) {
         isGoodForm = false;
-        feedback = 'KEEP BACK STRAIGHT';
+        feedback = 'KEEP ARMS EVEN';
+      }
+      
+      rawAngle = min(lAngle, rAngle);
+
+      final avgShoulderY = (leftShoulder.y + rightShoulder.y) / 2;
+      final avgWristY = (leftWrist.y + rightWrist.y) / 2;
+
+      // Anti-cheat: Enforce horizontal torso using foreshortening check.
+      // If standing, hips are very far below shoulders (large dy).
+      // If pushup, hips are roughly on the same level or slightly above/below due to foreshortening.
+      if (domHip != null) {
+         final torsoDy = (domHip.y - avgShoulderY).abs();
+         if (torsoDy > shoulderWidth * 1.5) {
+            rawAngle = 180.0;
+            isGoodForm = false;
+            feedback = 'GET HORIZONTAL';
+         }
+      } else if (nose != null) {
+         // If hips aren't visible in front view, check if they are just waving arms.
+         // In a true pushup, wrists should not fly above the nose. 
+         if (avgWristY < nose.y) {
+            rawAngle = 180.0;
+         }
+      }
+    } else {
+      // Side Profile
+      rawAngle = calculateAngle(domShoulder, domElbow, domWrist);
+
+      if (domHip != null && domAnkle != null) {
+        // Back straightness
+        final backAngle = calculateAngle(domShoulder, domHip, domAnkle);
+        if (backAngle < 155) {
+          isGoodForm = false;
+          feedback = 'KEEP BACK STRAIGHT';
+        }
+
+        // Knees locked
+        if (domKnee != null) {
+          final kneeAngle = calculateAngle(domHip, domKnee, domAnkle);
+          if (kneeAngle < 150) {
+            isGoodForm = false;
+            feedback = 'STRAIGHTEN KNEES';
+          }
+        }
+
+        // Horizontal anti-cheat (Torso angle to X-axis)
+        final bodySlopeAngle = atan2((domAnkle.y - domShoulder.y).abs(), (domAnkle.x - domShoulder.x).abs()) * 180 / pi;
+        if (bodySlopeAngle > 60) {
+          rawAngle = 180.0;
+          isGoodForm = false;
+          feedback = 'GET HORIZONTAL';
+        }
+      } else if (domHip != null) {
+        // Partial body (Ankle missing, Hip visible)
+        final torsoSlopeAngle = atan2((domHip.y - domShoulder.y).abs(), (domHip.x - domShoulder.x).abs()) * 180 / pi;
+        if (torsoSlopeAngle > 60) {
+          rawAngle = 180.0;
+          isGoodForm = false;
+          feedback = 'GET HORIZONTAL';
+        }
+      } else {
+        // Only torso/shoulder/face visible (severe partial)
+        // Check Nose vs Shoulder alignment. If perfectly vertical (standing), dy is large, dx is small.
+        if (nose != null) {
+          final verticalStandAngle = atan2((domShoulder.y - nose.y).abs(), (domShoulder.x - nose.x).abs()) * 180 / pi;
+          // If standing straight, angle of Nose to Shoulder is near 90.
+          // If in a pushup, the head comes forward/down, so the angle is much flatter (< 60 degrees).
+          if (verticalStandAngle > 65) {
+            rawAngle = 180.0;
+            isGoodForm = false;
+            feedback = 'GET HORIZONTAL';
+          }
+        } else {
+          // If even nose is missing, we just enforce the safety rule that wrist doesn't fly up above shoulders.
+          if (domWrist.y < domShoulder.y - 30) {
+            rawAngle = 180.0;
+          }
+        }
       }
     }
 
+    _smoothedPushupAngle = _smoothedPushupAngle == null
+        ? rawAngle
+        : (_smoothedPushupAngle! * (1 - ExerciseConstants.squatAngleSmoothing)) +
+            (rawAngle * ExerciseConstants.squatAngleSmoothing);
+    final effectiveAngle = _smoothedPushupAngle!;
+
     switch (_currentPhase) {
       case ExercisePhase.resting:
-        if (effectiveAngle < ExerciseConstants.pushupUpAngle)
+        if (effectiveAngle < ExerciseConstants.pushupUpAngle - 10)
           _currentPhase = ExercisePhase.descending;
         break;
       case ExercisePhase.descending:
         if (effectiveAngle <= ExerciseConstants.pushupDownAngle) {
           _currentPhase = ExercisePhase.active;
-        } else if (effectiveAngle >= ExerciseConstants.pushupUpAngle) {
+        } else if (effectiveAngle >= ExerciseConstants.pushupUpAngle - 10) {
           _currentPhase = ExercisePhase.resting;
           isGoodForm = false;
           feedback = 'GO DEEPER';
@@ -451,18 +566,21 @@ class PoseAnalyzer {
           _currentPhase = ExercisePhase.ascending;
         break;
       case ExercisePhase.ascending:
-        if (effectiveAngle >= ExerciseConstants.pushupUpAngle) {
+        if (effectiveAngle >= ExerciseConstants.pushupUpAngle - 10) {
           _currentPhase = ExercisePhase.resting;
           _repCount++;
         } else if (effectiveAngle <= ExerciseConstants.pushupDownAngle) {
           _currentPhase = ExercisePhase.active;
+          isGoodForm = false;
+          feedback = 'PUSH UP FULLY';
         }
         break;
     }
 
+    // Pass the same angle for both arms to the hold logic (it expects L/R/Effective)
     return _applyHoldLogic(
-      leftAngle,
-      rightAngle,
+      effectiveAngle,
+      effectiveAngle,
       effectiveAngle,
       isGoodForm,
       feedback,
