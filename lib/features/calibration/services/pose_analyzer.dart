@@ -419,8 +419,10 @@ class PoseAnalyzer {
     final leftAnkle = landmarks[PoseLandmarkType.leftAnkle];
     final rightAnkle = landmarks[PoseLandmarkType.rightAnkle];
 
-    final hasLeftArm = leftShoulder != null && leftElbow != null && leftWrist != null;
-    final hasRightArm = rightShoulder != null && rightElbow != null && rightWrist != null;
+final hasLeftArm = leftShoulder != null && leftElbow != null && leftWrist != null
+        && leftShoulder.likelihood > 0.4 && leftElbow.likelihood > 0.4 && leftWrist.likelihood > 0.4;
+    final hasRightArm = rightShoulder != null && rightElbow != null && rightWrist != null
+        && rightShoulder.likelihood > 0.4 && rightElbow.likelihood > 0.4 && rightWrist.likelihood > 0.4;
 
     if (!hasLeftArm && !hasRightArm) {
       return PoseAnalysisResult(
@@ -438,6 +440,7 @@ class PoseAnalyzer {
     final domShoulder = isLeftDominant ? leftShoulder! : rightShoulder!;
     final domElbow = isLeftDominant ? leftElbow! : rightElbow!;
     final domWrist = isLeftDominant ? leftWrist! : rightWrist!;
+    // Use the hips/knees from the SAME side as the dominant arm to ensure valid geometric pairs
     final domHip = isLeftDominant ? leftHip : rightHip;
     final domKnee = isLeftDominant ? leftKnee : rightKnee;
     final domAnkle = isLeftDominant ? leftAnkle : rightAnkle;
@@ -445,97 +448,87 @@ class PoseAnalyzer {
     // Front vs Side profile checks
     final hasBothShoulders = leftShoulder != null && rightShoulder != null;
     final shoulderWidth = hasBothShoulders ? (leftShoulder.x - rightShoulder.x).abs() : 0.0;
-    final torsoLength = domHip != null ? (domHip.y - domShoulder.y).abs() : 1.0;
-    final isFrontProfile = hasBothShoulders &&
-        leftShoulder.likelihood > 0.5 &&
-        rightShoulder.likelihood > 0.5 &&
-        (domHip == null ? shoulderWidth > 100 : shoulderWidth > torsoLength * 0.4);
+    
+    // Check likelihoods to prevent falsely assuming a solid front profile just because landmarks exist
+    final isFrontProfile = hasBothShoulders && hasLeftArm && hasRightArm && 
+        leftShoulder.likelihood > 0.6 &&
+        rightShoulder.likelihood > 0.6 &&
+        shoulderWidth > 0.15; // Normalized width threshold. If side profile, shoulderWidth approaches 0.
 
     double rawAngle = 180.0;
 
-    if (isFrontProfile && hasLeftArm && hasRightArm) {
+    if (isFrontProfile) {
       final lAngle = calculateAngle(leftShoulder, leftElbow, leftWrist);
       final rAngle = calculateAngle(rightShoulder, rightElbow, rightWrist);
 
-      if ((lAngle - rAngle).abs() > 40) {
+      if ((lAngle - rAngle).abs() > 45) {
         isGoodForm = false;
         feedback = 'KEEP ARMS EVEN';
       }
-      
-      rawAngle = min(lAngle, rAngle);
 
+      // Synthesize angle based on Y compression for front view
       final avgShoulderY = (leftShoulder.y + rightShoulder.y) / 2;
       final avgWristY = (leftWrist.y + rightWrist.y) / 2;
+      final armLength = sqrt(pow(leftShoulder.x - leftWrist.x, 2) + pow(leftShoulder.y - leftWrist.y, 2));
+      
+      final yDist = (avgShoulderY - avgWristY).abs();
+      // ratio 1.0 = fully standing (Y distance is full arm length)
+      // ratio 0.0 = fully down (Y distance is 0, wrists level with shoulders)
+      final ratio = (yDist / (armLength < 1 ? 1 : armLength)).clamp(0.0, 1.0);
+      final syntheticAngle = 90.0 + (ratio * 90.0);
+      
+      // Use the minimum of true 2D angle and synthetic angle
+      rawAngle = min(min(lAngle, rAngle), syntheticAngle);
 
-      // Anti-cheat: Enforce horizontal torso using foreshortening check.
-      // If standing, hips are very far below shoulders (large dy).
-      // If pushup, hips are roughly on the same level or slightly above/below due to foreshortening.
+      // Relaxed Anti-cheat: Enforce horizontal torso using foreshortening check.
       if (domHip != null) {
          final torsoDy = (domHip.y - avgShoulderY).abs();
-         if (torsoDy > shoulderWidth * 1.5) {
-            rawAngle = 180.0;
+         if (torsoDy > shoulderWidth * 2.5) { // very permissive to allow strange camera angles
             isGoodForm = false;
             feedback = 'GET HORIZONTAL';
-         }
-      } else if (nose != null) {
-         // If hips aren't visible in front view, check if they are just waving arms.
-         // In a true pushup, wrists should not fly above the nose. 
-         if (avgWristY < nose.y) {
-            rawAngle = 180.0;
          }
       }
     } else {
       // Side Profile
       rawAngle = calculateAngle(domShoulder, domElbow, domWrist);
 
-      if (domHip != null && domAnkle != null) {
+      if (domHip != null && domAnkle != null && domHip.likelihood > 0.5 && domAnkle.likelihood > 0.5) {
         // Back straightness
         final backAngle = calculateAngle(domShoulder, domHip, domAnkle);
-        if (backAngle < 155) {
+        if (backAngle < 145) { // lowered from 155 to be more forgiving
           isGoodForm = false;
           feedback = 'KEEP BACK STRAIGHT';
         }
 
         // Knees locked
-        if (domKnee != null) {
+        if (domKnee != null && domKnee.likelihood > 0.5) {
           final kneeAngle = calculateAngle(domHip, domKnee, domAnkle);
-          if (kneeAngle < 150) {
+          if (kneeAngle < 140) {
             isGoodForm = false;
             feedback = 'STRAIGHTEN KNEES';
           }
         }
 
-        // Horizontal anti-cheat (Torso angle to X-axis)
+        // Relaxed Horizontal anti-cheat
         final bodySlopeAngle = atan2((domAnkle.y - domShoulder.y).abs(), (domAnkle.x - domShoulder.x).abs()) * 180 / pi;
-        if (bodySlopeAngle > 60) {
-          rawAngle = 180.0;
+        if (bodySlopeAngle > 75) {
           isGoodForm = false;
           feedback = 'GET HORIZONTAL';
         }
-      } else if (domHip != null) {
+      } else if (domHip != null && domHip.likelihood > 0.5) {
         // Partial body (Ankle missing, Hip visible)
         final torsoSlopeAngle = atan2((domHip.y - domShoulder.y).abs(), (domHip.x - domShoulder.x).abs()) * 180 / pi;
-        if (torsoSlopeAngle > 60) {
-          rawAngle = 180.0;
+        if (torsoSlopeAngle > 75) {
           isGoodForm = false;
           feedback = 'GET HORIZONTAL';
         }
       } else {
         // Only torso/shoulder/face visible (severe partial)
-        // Check Nose vs Shoulder alignment. If perfectly vertical (standing), dy is large, dx is small.
-        if (nose != null) {
+        if (nose != null && nose.likelihood > 0.5) {
           final verticalStandAngle = atan2((domShoulder.y - nose.y).abs(), (domShoulder.x - nose.x).abs()) * 180 / pi;
-          // If standing straight, angle of Nose to Shoulder is near 90.
-          // If in a pushup, the head comes forward/down, so the angle is much flatter (< 60 degrees).
-          if (verticalStandAngle > 65) {
-            rawAngle = 180.0;
+          if (verticalStandAngle > 75) {
             isGoodForm = false;
             feedback = 'GET HORIZONTAL';
-          }
-        } else {
-          // If even nose is missing, we just enforce the safety rule that wrist doesn't fly up above shoulders.
-          if (domWrist.y < domShoulder.y - 30) {
-            rawAngle = 180.0;
           }
         }
       }
