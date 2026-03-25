@@ -1,0 +1,10 @@
+Analyzing kasrat_ai...                                          
+
+warning - Unused import: 'dart:convert' - lib\features\ai\services\gemini_service.dart:1:8 - unused_import
+warning - Unused import: 'package:flutter/foundation.dart' - lib\features\auth\services\auth_service.dart:1:8 - unused_import
+   info - Unnecessary use of multiple underscores - lib\features\onboarding\screens\commander_selection_screen.dart:111:41 - unnecessary_underscores
+   info - Unnecessary use of multiple underscores - lib\features\records\screens\records_screen.dart:45:41 - unnecessary_underscores
+   info - Unnecessary use of string interpolation - lib\features\records\screens\records_screen.dart:100:19 - unnecessary_string_interpolations
+warning - The value of the field '_escrowRecords' isn't used - lib\features\vault\screens\vault_screen.dart:17:30 - unused_field
+
+6 issues found. (ran in 48.9s)

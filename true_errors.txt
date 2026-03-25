@@ -1,0 +1,3 @@
+[        ] > Task :app:checkDebugAarMetadata FAILED
+[        ] Caching disabled for task ':app:checkDebugAarMetadata' because:
+[        ]   Build cache is disabled

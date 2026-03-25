@@ -1,0 +1,8 @@
+Analyzing kasrat_ai...                                          
+
+   info - The local variable '_2' starts with an underscore - lib\features\onboarding\screens\commander_selection_screen.dart:111:41 - no_leading_underscores_for_local_identifiers
+   info - The variable name '_2' isn't a lowerCamelCase identifier - lib\features\onboarding\screens\commander_selection_screen.dart:111:41 - non_constant_identifier_names
+   info - The local variable '_2' starts with an underscore - lib\features\records\screens\records_screen.dart:45:41 - no_leading_underscores_for_local_identifiers
+   info - The variable name '_2' isn't a lowerCamelCase identifier - lib\features\records\screens\records_screen.dart:45:41 - non_constant_identifier_names
+
+4 issues found. (ran in 24.4s)

@@ -1,0 +1,68 @@
+Running Gradle task 'assembleDebug'...                          
+[=========                              ] 25%                                   
+[=========                              ] 25% Fetch remote repository...        
+[=======================================] 100% Fetch remote repository...       
+
+[=========                              ] 25%                                   
+[=========                              ] 25% Fetch remote repository...        
+[=======================================] 100% Fetch remote repository...       
+
+[=========                              ] 25%                                   
+[=========                              ] 25% Fetch remote repository...        
+[=======================================] 100% Fetch remote repository...       
+
+lib/features/onboarding/screens/commander_selection_screen.dart:255:19: Error: Can't find ']' to match '['.
+        children: [
+                  ^
+lib/features/onboarding/screens/commander_selection_screen.dart:350:11: Error: Expected an identifier, but got 'if'.
+Try inserting an identifier before 'if'.
+          if (isSelected)
+          ^^
+lib/features/onboarding/screens/commander_selection_screen.dart:350:11: Error: Expected ')' before this.
+          if (isSelected)
+          ^^
+lib/features/onboarding/screens/commander_selection_screen.dart:252:27: Error: Too many positional arguments: 0 allowed, but 1 found.
+Try removing the extra positional arguments.
+    return GestureDetector(
+                          ^
+/D:/flutter/packages/flutter/lib/src/widgets/gesture_detector.dart:237:3: Context: Found this candidate, but the arguments don't match.
+  GestureDetector({
+  ^^^^^^^^^^^^^^^
+lib/features/onboarding/screens/commander_selection_screen.dart:377:7: Error: Expected ';' after this.
+      ),
+      ^
+lib/features/onboarding/screens/commander_selection_screen.dart:377:8: Error: Expected an identifier, but got ','.
+Try inserting an identifier before ','.
+      ),
+       ^
+lib/features/onboarding/screens/commander_selection_screen.dart:377:8: Error: Unexpected token ';'.
+      ),
+       ^
+lib/features/onboarding/screens/commander_selection_screen.dart:378:5: Error: Expected an identifier, but got ')'.
+Try inserting an identifier before ')'.
+    );
+    ^
+lib/features/onboarding/screens/commander_selection_screen.dart:377:8: Error: Expected ';' after this.
+      ),
+       ^
+lib/features/onboarding/screens/commander_selection_screen.dart:378:5: Error: Unexpected token ';'.
+    );
+    ^
+Target kernel_snapshot_program failed: Exception
+
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileFlutterBuildDebug'.
+> Process 'command 'D:\flutter\bin\flutter.bat'' finished with non-zero exit value 1
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 10s
+Running Gradle task 'assembleDebug'...                             10.4s
+Gradle task assembleDebug failed with exit code 1

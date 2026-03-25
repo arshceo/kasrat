@@ -1,0 +1,22 @@
+s:mergeDebugAssets (Thread[#1038,Execution worker Thread 6,5,main]) started.
+[        ] > Task :app:checkDebugAarMetadata FAILED
+[        ] Caching disabled for task ':app:checkDebugAarMetadata' because:
+[        ]   Build cache is disabled
+[        ]   Caching has been disabled for the task
+[        ] Task ':app:checkDebugAarMetadata' is not up-to-date because:
+[        ]   Input property 'aarMetadataFiles' file D:\Flutter Projects\kasrat_ai\build\flutter_local_notifications\intermediates\aar_metadata\debug\writeDebugAarMetadata\aar-metadata.properties has been added.
+[        ]   Input property 'aarMetadataFiles' file D:\Flutter Projects\kasrat_ai\build\flutter_plugin_android_lifecycle\intermediates\aar_metadata\debug\writeDebugAarMetadata\aar-metadata.properties has been added.
+[        ]   Input property 'aarMetadataFiles' file D:\Flutter Projects\kasrat_ai\build\google_sign_in_android\intermediates\aar_metadata\debug\writeDebugAarMetadata\aar-metadata.properties has been added.
+[        ]   and more...
+[        ] > Task :app_links:mergeDebugAssets
+[        ] Caching disabled for task ':app_links:mergeDebugAssets' because:
+[        ]   Build cache is disabled
+[        ]   Simple merging task
+[   +2 ms] Task ':app_links:mergeDebugAssets' is not up-to-date because:
+[        ]   Output property 'outputDir' file D:\Flutter Projects\kasrat_ai\build\app_links\intermediates\assets\debug\mergeDebugAssets has been removed.
+[        ] The input changes require a full rebuild for incremental task ':app_links:mergeDebugAssets'.
+[        ] Build 8095f68d-c5cf-406b-b37e-0ceecebf7328 is closed
+[        ] [Incubating] Problems report is available at: file:///D:/Flutter%20Projects/kasrat_ai/build/reports/problems/problems-report.html
+[        ] Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+[        ] You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+[        ] For more on this, please refer to https://docs.gradle.org/8.14/userguide/command_line_

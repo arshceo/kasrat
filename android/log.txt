@@ -1,0 +1,162 @@
+> Task :gradle:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :gradle:compileKotlin UP-TO-DATE
+> Task :gradle:compileJava NO-SOURCE
+> Task :gradle:compileGroovy NO-SOURCE
+> Task :gradle:pluginDescriptors UP-TO-DATE
+> Task :gradle:processResources UP-TO-DATE
+> Task :gradle:classes UP-TO-DATE
+> Task :gradle:jar UP-TO-DATE
+[=========                              ] 25%                                   
+[=========                              ] 25% Fetch remote repository...        
+[=======================================] 100% Fetch remote repository...       
+
+[=========                              ] 25%                                   
+[=========                              ] 25% Fetch remote repository...        
+[=======================================] 100% Fetch remote repository...       
+
+[=========                              ] 25%                                   
+[=========                              ] 25% Fetch remote repository...        
+[=======================================] 100% Fetch remote repository...       
+
+> Task :android_alarm_manager_plus:preBuild UP-TO-DATE
+> Task :android_alarm_manager_plus:preDebugBuild UP-TO-DATE
+> Task :android_alarm_manager_plus:mergeDebugJniLibFolders UP-TO-DATE
+> Task :android_alarm_manager_plus:mergeDebugNativeLibs NO-SOURCE
+> Task :android_alarm_manager_plus:stripDebugDebugSymbols NO-SOURCE
+> Task :android_alarm_manager_plus:copyDebugJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :android_alarm_manager_plus:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :android_alarm_manager_plus:generateDebugResValues UP-TO-DATE
+> Task :android_alarm_manager_plus:generateDebugResources UP-TO-DATE
+> Task :android_alarm_manager_plus:packageDebugResources UP-TO-DATE
+> Task :android_alarm_manager_plus:parseDebugLocalResources UP-TO-DATE
+> Task :android_alarm_manager_plus:generateDebugRFile UP-TO-DATE
+> Task :android_alarm_manager_plus:compileDebugKotlin UP-TO-DATE
+> Task :android_alarm_manager_plus:extractDebugAnnotations UP-TO-DATE
+> Task :android_alarm_manager_plus:extractDeepLinksForAarDebug UP-TO-DATE
+> Task :android_alarm_manager_plus:mergeDebugShaders UP-TO-DATE
+> Task :android_alarm_manager_plus:compileDebugShaders NO-SOURCE
+> Task :android_alarm_manager_plus:generateDebugAssets UP-TO-DATE
+> Task :android_alarm_manager_plus:mergeDebugAssets UP-TO-DATE
+> Task :android_alarm_manager_plus:javaPreCompileDebug UP-TO-DATE
+> Task :android_alarm_manager_plus:compileDebugJavaWithJavac UP-TO-DATE
+> Task :android_alarm_manager_plus:mergeDebugGeneratedProguardFiles UP-TO-DATE
+> Task :android_alarm_manager_plus:mergeDebugConsumerProguardFiles UP-TO-DATE
+> Task :android_alarm_manager_plus:prepareDebugArtProfile UP-TO-DATE
+> Task :android_alarm_manager_plus:prepareLintJarForPublish UP-TO-DATE
+> Task :android_alarm_manager_plus:processDebugManifest UP-TO-DATE
+> Task :android_alarm_manager_plus:processDebugJavaRes UP-TO-DATE
+> Task :android_alarm_manager_plus:mergeDebugJavaResource UP-TO-DATE
+> Task :android_alarm_manager_plus:syncDebugLibJars UP-TO-DATE
+> Task :android_alarm_manager_plus:writeDebugAarMetadata UP-TO-DATE
+> Task :android_alarm_manager_plus:bundleDebugAar UP-TO-DATE
+> Task :android_alarm_manager_plus:assembleDebug UP-TO-DATE
+> Task :app:DebugMinSdkCheck
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :android_alarm_manager_plus:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:compileFlutterBuildDebug UP-TO-DATE
+> Task :app:packJniLibsflutterBuildDebug UP-TO-DATE
+> Task :android_alarm_manager_plus:compileDebugLibraryResources UP-TO-DATE
+> Task :app_links:preBuild UP-TO-DATE
+> Task :app_links:preDebugBuild UP-TO-DATE
+> Task :app_links:writeDebugAarMetadata UP-TO-DATE
+> Task :audioplayers_android:preBuild UP-TO-DATE
+> Task :audioplayers_android:preDebugBuild UP-TO-DATE
+> Task :audioplayers_android:writeDebugAarMetadata UP-TO-DATE
+> Task :camera_android_camerax:preBuild UP-TO-DATE
+> Task :camera_android_camerax:preDebugBuild UP-TO-DATE
+> Task :camera_android_camerax:writeDebugAarMetadata UP-TO-DATE
+> Task :flutter_local_notifications:preBuild UP-TO-DATE
+> Task :flutter_local_notifications:preDebugBuild UP-TO-DATE
+> Task :flutter_local_notifications:writeDebugAarMetadata UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:preBuild UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:preDebugBuild UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:writeDebugAarMetadata UP-TO-DATE
+> Task :flutter_tts:preBuild UP-TO-DATE
+> Task :flutter_tts:preDebugBuild UP-TO-DATE
+> Task :flutter_tts:writeDebugAarMetadata UP-TO-DATE
+> Task :google_mlkit_commons:preBuild UP-TO-DATE
+> Task :google_mlkit_commons:preDebugBuild UP-TO-DATE
+> Task :google_mlkit_commons:writeDebugAarMetadata UP-TO-DATE
+> Task :google_mlkit_pose_detection:preBuild UP-TO-DATE
+> Task :google_mlkit_pose_detection:preDebugBuild UP-TO-DATE
+> Task :google_mlkit_pose_detection:writeDebugAarMetadata UP-TO-DATE
+> Task :google_sign_in_android:preBuild UP-TO-DATE
+> Task :google_sign_in_android:preDebugBuild UP-TO-DATE
+> Task :google_sign_in_android:writeDebugAarMetadata UP-TO-DATE
+> Task :path_provider_android:preBuild UP-TO-DATE
+> Task :path_provider_android:preDebugBuild UP-TO-DATE
+> Task :path_provider_android:writeDebugAarMetadata UP-TO-DATE
+> Task :pedometer:preBuild UP-TO-DATE
+> Task :pedometer:preDebugBuild UP-TO-DATE
+> Task :pedometer:writeDebugAarMetadata UP-TO-DATE
+> Task :sensors_plus:preBuild UP-TO-DATE
+> Task :sensors_plus:preDebugBuild UP-TO-DATE
+> Task :sensors_plus:writeDebugAarMetadata UP-TO-DATE
+> Task :shared_preferences_android:preBuild UP-TO-DATE
+> Task :shared_preferences_android:preDebugBuild UP-TO-DATE
+> Task :shared_preferences_android:writeDebugAarMetadata UP-TO-DATE
+> Task :url_launcher_android:preBuild UP-TO-DATE
+> Task :url_launcher_android:preDebugBuild UP-TO-DATE
+> Task :url_launcher_android:writeDebugAarMetadata UP-TO-DATE
+> Task :app:cleanMergeDebugAssets UP-TO-DATE
+> Task :app:mergeDebugShaders UP-TO-DATE
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app_links:mergeDebugShaders UP-TO-DATE
+> Task :app_links:compileDebugShaders NO-SOURCE
+> Task :app_links:generateDebugAssets UP-TO-DATE
+> Task :app_links:mergeDebugAssets UP-TO-DATE
+> Task :audioplayers_android:mergeDebugShaders UP-TO-DATE
+> Task :audioplayers_android:compileDebugShaders NO-SOURCE
+> Task :audioplayers_android:generateDebugAssets UP-TO-DATE
+> Task :audioplayers_android:mergeDebugAssets UP-TO-DATE
+> Task :camera_android_camerax:mergeDebugShaders UP-TO-DATE
+> Task :camera_android_camerax:compileDebugShaders NO-SOURCE
+> Task :camera_android_camerax:generateDebugAssets UP-TO-DATE
+> Task :camera_android_camerax:mergeDebugAssets UP-TO-DATE
+> Task :flutter_local_notifications:mergeDebugShaders UP-TO-DATE
+> Task :flutter_local_notifications:compileDebugShaders NO-SOURCE
+> Task :flutter_local_notifications:generateDebugAssets UP-TO-DATE
+> Task :flutter_local_notifications:mergeDebugAssets UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:mergeDebugShaders UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:compileDebugShaders NO-SOURCE
+> Task :flutter_plugin_android_lifecycle:generateDebugAssets UP-TO-DATE
+> Task :flutter_plugin_android_lifecycle:mergeDebugAssets UP-TO-DATE
+> Task :flutter_tts:mergeDebugShaders UP-TO-DATE
+> Task :flutter_tts:compileDebugShaders NO-SOURCE
+> Task :flutter_tts:generateDebugAssets UP-TO-DATE
+> Task :app:checkDebugAarMetadata FAILED
+> Task :flutter_tts:mergeDebugAssets UP-TO-DATE
+> Task :google_mlkit_commons:mergeDebugShaders UP-TO-DATE
+
+[Incubating] Problems report is available at: file:///D:/Flutter%20Projects/kasrat_ai/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:checkDebugAarMetadata'.
+> A failure occurred while executing com.android.build.gradle.internal.tasks.CheckAarMetadataWorkAction
+   > An issue was found when checking AAR metadata:
+     
+       1.  Dependency ':flutter_local_notifications' requires core library desugaring to be enabled
+           for :app.
+     
+           See https://developer.android.com/studio/write/java8-support.html for more
+           details.
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.14/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 8s
+63 actionable tasks: 2 executed, 61 up-to-date
