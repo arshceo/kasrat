@@ -104,6 +104,8 @@ class PoseAnalyzer {
   PoseAnalysisResult _analyzeSquat(
     Map<PoseLandmarkType, PoseLandmark> landmarks,
   ) {
+    final leftShoulder = landmarks[PoseLandmarkType.leftShoulder];
+    final rightShoulder = landmarks[PoseLandmarkType.rightShoulder];
     final leftHip = landmarks[PoseLandmarkType.leftHip];
     final leftKnee = landmarks[PoseLandmarkType.leftKnee];
     final leftAnkle = landmarks[PoseLandmarkType.leftAnkle];
@@ -211,16 +213,32 @@ class PoseAnalyzer {
       );
     }
 
-    // Check if the user is facing front or side.
-    // If side, one shoulder/hip is much more visible, or ankles x-distance is large.
-    // For front, both shoulders and hips are clearly visible and separated on the X axis.
-    final frontViewWidth = (leftShoulder!.x - rightShoulder!.x).abs();
-    final isFrontProfile = leftShoulder.likelihood > 0.7 && rightShoulder.likelihood > 0.7 && frontViewWidth > 0.15; // 0.15 normalized screen width
+    final hasShoulders = leftShoulder != null && rightShoulder != null;
+    final shoulderWidth = hasShoulders ? (leftShoulder.x - rightShoulder.x).abs() : 0.0;
+    final torsoLength = hasShoulders ? (dominantHip.y - leftShoulder.y).abs() : 1.0;
     
-    // Process using only the side-profile dominant leg.
-    final rawAngle = calculateAngle(dominantHip, dominantKnee, dominantAnkle);
-    // Extra front-view calculations
-    final frontHipKneeYDist = (dominantHip.y - dominantKnee.y).abs();
+    // Front profile if both shoulders are visible and horizontally separated somewhat reasonably
+    final isFrontProfile = hasShoulders && 
+        leftShoulder.likelihood > 0.5 && 
+        rightShoulder.likelihood > 0.5 && 
+        (shoulderWidth > torsoLength * 0.35); 
+    
+    // Process angles 
+    double rawAngle = calculateAngle(dominantHip, dominantKnee, dominantAnkle);
+    
+    // If facing the camera, the 2D joint angle often stays near 180 due to foreshortening.
+    // We synthesize an effective angle interpreting the Y-axis compression of the femur.
+    if (isFrontProfile) {
+      final femurY = dominantKnee.y - dominantHip.y; // Positive when standing
+      final tibiaY = (dominantAnkle.y - dominantKnee.y).abs().clamp(1.0, double.infinity);
+      final depthRatio = (femurY / tibiaY).clamp(-0.5, 1.2); 
+      // ratio ~ 1.0 = standing (180 deg)
+      // ratio ~ 0.0 = parallel (90 deg)
+      final syntheticAngle = 90.0 + (depthRatio * 90.0);
+      
+      // Use the smaller (more bent) of the two to aggressively detect depth from the front
+      rawAngle = min(rawAngle, syntheticAngle);
+    }
     
     _smoothedSquatAngle = _smoothedSquatAngle == null
         ? rawAngle
@@ -506,4 +524,25 @@ class PoseAnalyzer {
     }
 
     if (_holdActive) {
-      holdTrig
+      holdTriggered = true;
+      final elapsed = DateTime.now().difference(_holdStartTime!);
+      if (elapsed >= ExerciseConstants.holdDuration) {
+        _holdActive = false;
+        holdPassed = true;
+        _scheduleNextHold();
+      }
+    }
+
+    return PoseAnalysisResult(
+      leftMainAngle: leftAngle,
+      rightMainAngle: rightAngle,
+      effectiveAngle: effectiveAngle,
+      phase: _currentPhase,
+      repCount: _repCount,
+      isGoodForm: isGoodForm,
+      holdTriggered: holdTriggered,
+      holdPassed: holdPassed,
+      formFeedback: feedback,
+    );
+  }
+}
