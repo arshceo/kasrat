@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_constants.dart';
@@ -27,9 +28,10 @@ class _BouncerLoginScreenState extends State<BouncerLoginScreen>
       duration: const Duration(seconds: 4),
     )..repeat();
 
-    _scanlinePosition = Tween<double>(begin: -0.1, end: 1.1).animate(
-      _scanlineController,
-    );
+    _scanlinePosition = Tween<double>(
+      begin: -0.1,
+      end: 1.1,
+    ).animate(_scanlineController);
   }
 
   @override
@@ -50,10 +52,11 @@ class _BouncerLoginScreenState extends State<BouncerLoginScreen>
         context.go(AppRoutes.languageSelection);
       }
     } catch (e) {
+      debugPrint('Google sign-in failed: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'AUTH_FAILED. RE-ATTEMPT.';
+          _errorMessage = e.toString().replaceFirst('Exception: ', '');
         });
       }
     }
@@ -68,9 +71,7 @@ class _BouncerLoginScreenState extends State<BouncerLoginScreen>
       body: Stack(
         children: [
           // Background pattern
-          Positioned.fill(
-             child: CustomPaint(painter: _GridPainter()),
-          ),
+          Positioned.fill(child: CustomPaint(painter: _GridPainter())),
 
           // Scanline effect
           AnimatedBuilder(
@@ -99,30 +100,40 @@ class _BouncerLoginScreenState extends State<BouncerLoginScreen>
 
           // Urgency meters (Left)
           Positioned(
-            left: 0, top: 0, bottom: 0,
+            left: 0,
+            top: 0,
+            bottom: 0,
             width: 8,
             child: Container(color: AppColors.surfaceContainerLow),
           ),
           Positioned(
-            left: 0, top: 0, bottom: 0,
+            left: 0,
+            top: 0,
+            bottom: 0,
             width: 8,
             child: FractionallySizedBox(
-              heightFactor: 1.0, alignment: Alignment.topCenter,
+              heightFactor: 1.0,
+              alignment: Alignment.topCenter,
               child: Container(color: AppColors.neonRed),
             ),
           ),
 
           // Urgency meters (Right)
           Positioned(
-            right: 0, top: 0, bottom: 0,
+            right: 0,
+            top: 0,
+            bottom: 0,
             width: 8,
             child: Container(color: AppColors.surfaceContainerLow),
           ),
           Positioned(
-            right: 0, top: 0, bottom: 0,
+            right: 0,
+            top: 0,
+            bottom: 0,
             width: 8,
             child: FractionallySizedBox(
-              heightFactor: 0.3, alignment: Alignment.topCenter,
+              heightFactor: 0.3,
+              alignment: Alignment.topCenter,
               child: Container(color: AppColors.neonRed),
             ),
           ),
@@ -134,10 +145,14 @@ class _BouncerLoginScreenState extends State<BouncerLoginScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                   // Top Navigation
+                  // Top Navigation
                   Row(
                     children: [
-                      const Icon(Icons.security, color: AppColors.neonRed, size: 28),
+                      const Icon(
+                        Icons.security,
+                        color: AppColors.neonRed,
+                        size: 28,
+                      ),
                       const SizedBox(width: 8),
                       Text(
                         'USTAD AI',
@@ -150,9 +165,9 @@ class _BouncerLoginScreenState extends State<BouncerLoginScreen>
                       ),
                     ],
                   ),
-                  
+
                   const Spacer(),
-                  
+
                   // Main Body
                   Row(
                     children: [
@@ -170,7 +185,7 @@ class _BouncerLoginScreenState extends State<BouncerLoginScreen>
                     ],
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Massive Headline
                   Text(
                     'UNAUTHORIZED\nPERSONNEL',
@@ -183,11 +198,13 @@ class _BouncerLoginScreenState extends State<BouncerLoginScreen>
                     ),
                   ),
                   const SizedBox(height: 24),
-                  
+
                   // Technical Subtext
                   Container(
                     decoration: const BoxDecoration(
-                      border: Border(left: BorderSide(color: AppColors.neonRed, width: 4)),
+                      border: Border(
+                        left: BorderSide(color: AppColors.neonRed, width: 4),
+                      ),
                     ),
                     padding: const EdgeInsets.only(left: 16),
                     child: RichText(
@@ -199,29 +216,43 @@ class _BouncerLoginScreenState extends State<BouncerLoginScreen>
                           height: 1.2,
                         ),
                         children: [
-                          const TextSpan(text: 'You are not active in the system. '),
+                          const TextSpan(
+                            text: 'You are not active in the system. ',
+                          ),
                           TextSpan(
                             text: 'Authenticate',
-                            style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                            style: GoogleFonts.inter(
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            ),
                           ),
-                          const TextSpan(text: ' to begin the 28-Day Protocol.'),
+                          const TextSpan(
+                            text: ' to begin the 28-Day Protocol.',
+                          ),
                         ],
                       ),
                     ),
                   ),
                   const SizedBox(height: 32),
-                  
+
                   if (_errorMessage != null) ...[
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: AppColors.danger.withValues(alpha: 0.1),
-                        border: Border.all(color: AppColors.danger.withValues(alpha: 0.4)),
+                        border: Border.all(
+                          color: AppColors.danger.withValues(alpha: 0.4),
+                        ),
                       ),
                       child: Text(
                         _errorMessage!,
-                        style: GoogleFonts.spaceGrotesk(fontSize: 10, color: AppColors.danger, letterSpacing: 1, fontWeight: FontWeight.w700),
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 10,
+                          color: AppColors.danger,
+                          letterSpacing: 1,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -236,11 +267,20 @@ class _BouncerLoginScreenState extends State<BouncerLoginScreen>
                         backgroundColor: AppColors.textPrimary,
                         foregroundColor: AppColors.background,
                         padding: const EdgeInsets.symmetric(vertical: 20),
-                        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.zero,
+                        ),
                         elevation: 0,
                       ),
                       child: _isLoading
-                          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.background))
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.background,
+                              ),
+                            )
                           : Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -266,12 +306,16 @@ class _BouncerLoginScreenState extends State<BouncerLoginScreen>
                   ),
 
                   const SizedBox(height: 40),
-                  
+
                   // System Metrics decoration
                   Container(
                     padding: const EdgeInsets.only(top: 24, bottom: 32),
                     decoration: BoxDecoration(
-                      border: Border(top: BorderSide(color: AppColors.surfaceGlass.withValues(alpha: 0.3))),
+                      border: Border(
+                        top: BorderSide(
+                          color: AppColors.surfaceGlass.withValues(alpha: 0.3),
+                        ),
+                      ),
                     ),
                     child: Column(
                       children: [
@@ -293,7 +337,6 @@ class _BouncerLoginScreenState extends State<BouncerLoginScreen>
                       ],
                     ),
                   ),
-                  
                 ],
               ),
             ),
@@ -336,7 +379,8 @@ class _GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = AppColors.textMuted.withValues(alpha: 0.03) // Very subtle
+      ..color = AppColors.textMuted
+          .withValues(alpha: 0.03) // Very subtle
       ..strokeWidth = 1.0;
     const spacing = 40.0;
     // Scanlines

@@ -1,4 +1,5 @@
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Auth service — handles Google Sign-In via Supabase.
@@ -7,37 +8,45 @@ class AuthService {
 
   /// Sign in with Google using Supabase native Google auth.
   static Future<AuthResponse> signInWithGoogle() async {
-    // 🚨 STOP! EXTREMELY IMPORTANT:
-    // This MUST be the "Web application" Client ID from Google Cloud Console.
-    // Do NOT put the "Android" Client ID here.
-    // Both the Web Client and Android Client must exist in the EXACT SAME Google Cloud Project.
-    const String webClientId = '378148668409-38lfvcjb4b350lm01c4p2v9s5acfqsvp.apps.googleusercontent.com';
+    const String webClientId =
+        '378148668409-38lfvcjb4b350lm01c4p2v9s5acfqsvp.apps.googleusercontent.com';
 
-    /// For Android: Uses native Google Sign-In
     final GoogleSignIn googleSignIn = GoogleSignIn(
+      scopes: const ['email', 'profile', 'openid'],
       serverClientId: webClientId,
     );
 
-    final googleUser = await googleSignIn.signIn();
-    if (googleUser == null) {
-      throw Exception('Google Sign-In was cancelled');
+    try {
+      final googleUser = await googleSignIn.signIn();
+      if (googleUser == null) {
+        throw Exception('Google Sign-In was cancelled');
+      }
+
+      final googleAuth = await googleUser.authentication;
+      final idToken = googleAuth.idToken;
+      final accessToken = googleAuth.accessToken;
+
+      if (idToken == null) {
+        throw Exception('No ID Token found');
+      }
+
+      final response = await _supabase.auth.signInWithIdToken(
+        provider: OAuthProvider.google,
+        idToken: idToken,
+        accessToken: accessToken,
+      );
+
+      return response;
+    } on PlatformException catch (error) {
+      if (error.code == 'sign_in_failed' &&
+          error.message?.contains('ApiException: 10') == true) {
+        throw Exception(
+          'Google Sign-In is not configured for this Android build. Register package com.ustadai.kasrat_ai with SHA-1 F8:08:A2:7A:96:81:16:38:3E:20:7E:49:98:53:00:77:A0:6C:03:0D in Google Cloud OAuth and Supabase, then rebuild the app.',
+        );
+      }
+
+      rethrow;
     }
-
-    final googleAuth = await googleUser.authentication;
-    final idToken = googleAuth.idToken;
-    final accessToken = googleAuth.accessToken;
-
-    if (idToken == null) {
-      throw Exception('No ID Token found');
-    }
-
-    final response = await _supabase.auth.signInWithIdToken(
-      provider: OAuthProvider.google,
-      idToken: idToken,
-      accessToken: accessToken,
-    );
-
-    return response;
   }
 
   /// Sign out
@@ -75,15 +84,14 @@ class AuthService {
 
     final updates = <String, dynamic>{};
     if (language != null) updates['language'] = language;
-    if (commanderPersona != null) updates['commander_persona'] = commanderPersona;
+    if (commanderPersona != null)
+      updates['commander_persona'] = commanderPersona;
     if (tier != null) updates['tier'] = tier;
-    if (collateralAmount != null) updates['collateral_amount'] = collateralAmount;
+    if (collateralAmount != null)
+      updates['collateral_amount'] = collateralAmount;
 
     if (updates.isNotEmpty) {
-      await _supabase
-          .from('profiles')
-          .update(updates)
-          .eq('id', user.id);
+      await _supabase.from('profiles').update(updates).eq('id', user.id);
     }
   }
 
