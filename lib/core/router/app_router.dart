@@ -63,12 +63,13 @@ class AppRouter {
         path: AppRoutes.calibration,
         builder: (context, state) {
           final extra = state.extra as Map<String, dynamic>?;
-          final recalibrate = state.uri.queryParameters['recalibrate'] == 'true';
+          final recalibrate =
+              state.uri.queryParameters['recalibrate'] == 'true';
           return CalibrationScreen(
             isFirstTime: !recalibrate,
-            exerciseType: (extra?['exerciseType'] as ExerciseType?) ?? ExerciseType.squat,
+            exerciseType:
+                (extra?['exerciseType'] as ExerciseType?) ?? ExerciseType.squat,
             durationSeconds: (extra?['durationSeconds'] as int?) ?? 60,
-            voiceTriggerEnabled: (extra?['voiceTriggerEnabled'] as bool?) ?? false,
           );
         },
       ),
@@ -77,19 +78,23 @@ class AppRouter {
         routes: [
           GoRoute(
             path: AppRoutes.dashboard,
-            pageBuilder: (context, state) => const NoTransitionPage(child: DashboardScreen()),
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: DashboardScreen()),
           ),
           GoRoute(
             path: AppRoutes.vault,
-            pageBuilder: (context, state) => const NoTransitionPage(child: VaultScreen()),
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: VaultScreen()),
           ),
           GoRoute(
             path: AppRoutes.records,
-            pageBuilder: (context, state) => const NoTransitionPage(child: RecordsScreen()),
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: RecordsScreen()),
           ),
           GoRoute(
             path: AppRoutes.profile,
-            pageBuilder: (context, state) => const NoTransitionPage(child: ProfileScreen()),
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: ProfileScreen()),
           ),
         ],
       ),

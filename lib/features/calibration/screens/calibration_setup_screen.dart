@@ -5,7 +5,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../features/calibration/services/pose_analyzer.dart';
 
 /// Screen A-01b: Pre-flight calibration setup.
-/// User selects exercise type, timer duration, and voice trigger preference.
+/// User selects exercise type and timer duration.
 class CalibrationSetupScreen extends StatefulWidget {
   const CalibrationSetupScreen({super.key});
 
@@ -16,7 +16,6 @@ class CalibrationSetupScreen extends StatefulWidget {
 class _CalibrationSetupScreenState extends State<CalibrationSetupScreen> {
   ExerciseType _selectedExercise = ExerciseType.squat;
   int _selectedDuration = 60; // seconds
-  bool _voiceTriggerEnabled = true;
 
   final List<int> _durations = [30, 60, 90, 120];
 
@@ -27,7 +26,6 @@ class _CalibrationSetupScreenState extends State<CalibrationSetupScreen> {
       extra: {
         'exerciseType': _selectedExercise,
         'durationSeconds': _selectedDuration,
-        'voiceTriggerEnabled': _voiceTriggerEnabled,
       },
     );
   }
@@ -49,8 +47,6 @@ class _CalibrationSetupScreenState extends State<CalibrationSetupScreen> {
                     _buildExerciseSelector(),
                     const SizedBox(height: 20),
                     _buildTimerSelector(),
-                    const SizedBox(height: 20),
-                    _buildVoiceToggle(),
                     const SizedBox(height: 32),
                     _buildStartButton(),
                     const SizedBox(height: 16),
@@ -194,21 +190,30 @@ class _CalibrationSetupScreenState extends State<CalibrationSetupScreen> {
                 color: selected ? AppColors.neonRed : AppColors.textMuted,
                 letterSpacing: 1,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 12),
-            if (selected)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                color: AppColors.neonRed,
-                child: Text(
-                  'SELECTED',
-                  style: GoogleFonts.orbitron(
-                    fontSize: 7,
-                    color: Colors.white,
-                    letterSpacing: 1,
-                  ),
-                ),
-              ),
+            SizedBox(
+              height: 16,
+              child: selected
+                  ? Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      color: AppColors.neonRed,
+                      child: Text(
+                        'SELECTED',
+                        style: GoogleFonts.orbitron(
+                          fontSize: 7,
+                          color: Colors.white,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                    )
+                  : const SizedBox.shrink(),
+            ),
           ],
         ),
       ),
@@ -267,97 +272,6 @@ class _CalibrationSetupScreenState extends State<CalibrationSetupScreen> {
           }).toList(),
         ),
       ],
-    );
-  }
-
-  Widget _buildVoiceToggle() {
-    return GestureDetector(
-      onTap: () {
-        setState(() => _voiceTriggerEnabled = !_voiceTriggerEnabled);
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: _voiceTriggerEnabled
-              ? AppColors.neonRed.withValues(alpha: 0.08)
-              : const Color(0xFF1A1A1A),
-          border: Border(
-            left: BorderSide(
-              color: _voiceTriggerEnabled
-                  ? AppColors.neonRed
-                  : const Color(0xFF2A2A2A),
-              width: 4,
-            ),
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              Icons.mic,
-              color: _voiceTriggerEnabled
-                  ? AppColors.neonRed
-                  : AppColors.textMuted,
-              size: 22,
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'VOICE TRIGGER',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                  Text(
-                    _voiceTriggerEnabled
-                        ? 'ENABLED: SAY "GO" / "STOP" DURING DRILL'
-                        : 'DISABLED',
-                    style: GoogleFonts.orbitron(
-                      fontSize: 8,
-                      color: AppColors.textMuted,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Toggle pill
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 44,
-              height: 24,
-              decoration: BoxDecoration(
-                color: _voiceTriggerEnabled
-                    ? AppColors.neonRed
-                    : const Color(0xFF2A2A2A),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Align(
-                alignment: _voiceTriggerEnabled
-                    ? Alignment.centerRight
-                    : Alignment.centerLeft,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: Container(
-                    width: 16,
-                    height: 16,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 

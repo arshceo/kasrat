@@ -14,7 +14,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // Mock data for the UI
   final int _currentDay = 15;
   final int _totalDays = 28;
-  
+
   // Ration checklist state
   final List<bool> _rationsChecked = [false, false, false];
 
@@ -26,7 +26,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         children: [
           // Background Grid Pattern & Ghost Text
           _buildBackground(),
-          
+
           // Urgency Meter (Left Edge)
           Positioned(
             left: 0,
@@ -59,7 +59,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
           ),
-          
+
           // Main Scrollable Content
           SafeArea(
             child: Column(
@@ -68,19 +68,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 _buildHeader(),
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(26, 24, 20, 32), // Left padding accounts for urgency meter
+                    padding: const EdgeInsets.fromLTRB(
+                      26,
+                      24,
+                      20,
+                      32,
+                    ), // Left padding accounts for urgency meter
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         _buildDirectiveHeader(),
                         const SizedBox(height: 32),
-                        
+
                         _buildBentoGrid(),
                         const SizedBox(height: 32),
-                        
+
                         _buildDailyRations(),
                         const SizedBox(height: 48),
-                        
+
                         _buildCommenceDrillCTA(),
                       ],
                     ),
@@ -98,11 +103,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Stack(
       children: [
         // Industrial Grid (using a custom painter or faint repeating containers)
-        Positioned.fill(
-          child: CustomPaint(
-            painter: _GridPainter(),
-          ),
-        ),
+        Positioned.fill(child: CustomPaint(painter: _GridPainter())),
         // Ghost Text
         Positioned(
           right: -80,
@@ -170,9 +171,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildDirectiveHeader() {
     return Container(
       decoration: const BoxDecoration(
-        border: Border(
-          left: BorderSide(color: AppColors.neonRed, width: 6),
-        ),
+        border: Border(left: BorderSide(color: AppColors.neonRed, width: 6)),
       ),
       padding: const EdgeInsets.only(left: 16, top: 8, bottom: 8),
       child: Column(
@@ -190,9 +189,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          _buildInfoRow(Icons.payments_outlined, 'BUDGET: ₹150/DAY', AppColors.neonRed),
+          _buildInfoRow(
+            Icons.payments_outlined,
+            'BUDGET: ₹150/DAY',
+            AppColors.neonRed,
+          ),
           const SizedBox(height: 4),
-          _buildInfoRow(Icons.location_on_outlined, 'LOCATION: PUNJAB', Colors.white),
+          _buildInfoRow(
+            Icons.location_on_outlined,
+            'LOCATION: PUNJAB',
+            Colors.white,
+          ),
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -390,7 +397,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     required Color bgColor,
   }) {
     final isChecked = _rationsChecked[index];
-    
+
     return InkWell(
       onTap: () {
         setState(() {
@@ -423,7 +430,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         style: GoogleFonts.spaceGrotesk(
                           fontSize: 24,
                           fontWeight: FontWeight.w900,
-                          color: isChecked ? AppColors.textMuted : AppColors.neonRed,
+                          color: isChecked
+                              ? AppColors.textMuted
+                              : AppColors.neonRed,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -438,29 +447,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  ...items.map((item) => Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 6,
-                          height: 6,
-                          color: isChecked ? AppColors.textMuted : AppColors.neonRed,
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          item,
-                          style: GoogleFonts.spaceGrotesk(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                            color: isChecked ? AppColors.textMuted : Colors.white,
-                            letterSpacing: -0.5,
-                            decoration: isChecked ? TextDecoration.lineThrough : null,
+                  ...items.map(
+                    (item) => Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            color: isChecked
+                                ? AppColors.textMuted
+                                : AppColors.neonRed,
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 12),
+                          Text(
+                            item,
+                            style: GoogleFonts.spaceGrotesk(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: isChecked
+                                  ? AppColors.textMuted
+                                  : Colors.white,
+                              letterSpacing: -0.5,
+                              decoration: isChecked
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  )),
+                  ),
                 ],
               ),
             ),
@@ -475,9 +492,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   width: 3,
                 ),
               ),
-              child: isChecked 
-                ? const Icon(Icons.check, color: Colors.black, size: 32)
-                : null,
+              child: isChecked
+                  ? const Icon(Icons.check, color: Colors.black, size: 32)
+                  : null,
             ),
           ],
         ),
@@ -488,23 +505,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildCommenceDrillCTA() {
     return Column(
       children: [
-        // COMMENCE DRILL CTA
+        // START DRILL CTA
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
             onPressed: () {
-              context.push(AppRoutes.calibration); 
+              context.push(AppRoutes.calibrationSetup);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.neonRed,
               padding: const EdgeInsets.symmetric(vertical: 20),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  'COMMENCE DRILL',
+                  'START DRILL',
                   style: GoogleFonts.orbitron(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
@@ -513,7 +532,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.white),
+                const Icon(
+                  Icons.arrow_forward_ios,
+                  size: 14,
+                  color: Colors.white,
+                ),
               ],
             ),
           ),
@@ -524,7 +547,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           width: double.infinity,
           child: ElevatedButton(
             onPressed: () {
-              context.push(AppRoutes.alarm); 
+              context.push(AppRoutes.alarm);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.transparent,
@@ -547,7 +570,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Icon(Icons.warning_amber, size: 14, color: AppColors.neonRed),
+                const Icon(
+                  Icons.warning_amber,
+                  size: 14,
+                  color: AppColors.neonRed,
+                ),
               ],
             ),
           ),
@@ -565,12 +592,12 @@ class _GridPainter extends CustomPainter {
       ..strokeWidth = 1;
 
     const double spacing = 40.0;
-    
+
     // Draw vertical lines
     for (double i = 0; i < size.width; i += spacing) {
       canvas.drawLine(Offset(i, 0), Offset(i, size.height), paint);
     }
-    
+
     // Draw horizontal lines
     for (double i = 0; i < size.height; i += spacing) {
       canvas.drawLine(Offset(0, i), Offset(size.width, i), paint);

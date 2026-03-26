@@ -5,7 +5,6 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
-import 'package:speech_to_text/speech_to_text.dart';
 import '../../../core/constants/app_constants.dart';
 import '../painters/skeleton_painter.dart';
 import '../services/pose_analyzer.dart';
@@ -21,14 +20,12 @@ class CalibrationScreen extends StatefulWidget {
   final bool isFirstTime;
   final ExerciseType exerciseType;
   final int durationSeconds;
-  final bool voiceTriggerEnabled;
 
   const CalibrationScreen({
     super.key,
     this.isFirstTime = true,
     this.exerciseType = ExerciseType.squat,
     this.durationSeconds = 60,
-    this.voiceTriggerEnabled = false,
   });
 
   @override
@@ -50,6 +47,7 @@ class _CalibrationScreenState extends State<CalibrationScreen>
     ),
   );
   bool _isProcessing = false;
+  DateTime? _lastFrameTime;
 
   // Analysis
   final PoseAnalyzer _poseAnalyzer = PoseAnalyzer();
@@ -107,19 +105,14 @@ class _CalibrationScreenState extends State<CalibrationScreen>
     'THIRTY',
   ];
 
-  // Voice STOP/GO detection
-  final SpeechToText _speech = SpeechToText();
-  bool _speechAvailable = false;
-  bool _isListeningForGo = false;
-
   // Camera switching
   bool _isFrontCamera = true;
   int _currentCameraIndex = 0;
 
-  // Exercise tracking
-  final int _squatReps = 0;
-  final int _pushupReps = 0;
-  final int _plankSeconds = 0;
+  // Drill results
+  int _completedReps = 0;
+  int? _previousBestReps;
+  bool _isLoadingPreviousBest = false;
 
   // UI state
   CalibrationPhase _phase = CalibrationPhase.warmup;
@@ -133,14 +126,6 @@ class _CalibrationScreenState extends State<CalibrationScreen>
     _remainingSeconds = widget.durationSeconds;
     _initCamera();
     _initTts();
-    if (widget.voiceTriggerEnabled) {
-      _initSpeech().then((_) {
-        // Preëmptively listen for GO if we are in warmup phase
-        if (_phase == CalibrationPhase.warmup && !_isCountingDown) {
-          _startVoiceGoListener();
-        }
-      });
-    }
   }
 
   Future<void> _initTts() async {
@@ -149,17 +134,41 @@ class _CalibrationScreenState extends State<CalibrationScreen>
     await _tts.setVolume(1.0);
   }
 
-  Future<void> _initSpeech() async {
-    _speechAvailable = await _speech.initialize(
-      onError: (e) => debugPrint('STT Error: $e'),
-      onStatus: (status) => debugPrint('STT Status: $status'),
-    );
+  String get _exerciseName =>
+      widget.exerciseType == ExerciseType.squat ? 'SQUAT' : 'PUSHUP';
+
+  String get _exerciseNamePlural =>
+      widget.exerciseType == ExerciseType.squat ? 'SQUATS' : 'PUSHUPS';
+
+  String get _exerciseDbType =>
+      widget.exerciseType == ExerciseType.squat ? 'SQUAT' : 'PUSHUP';
+
+  String get _drillTitle => '$_exerciseName DRILL';
+
+  String get _ustadInstruction =>
+      'GIVE ME MAXIMUM $_exerciseNamePlural IN ${widget.durationSeconds} SECONDS.';
+
+  Future<void> _loadPreviousBest() async {
+    setState(() => _isLoadingPreviousBest = true);
+    try {
+      final best = await GeminiService.getBestCompletedRepsForExercise(
+        exerciseType: _exerciseDbType,
+      );
+      if (!mounted) return;
+      setState(() {
+        _previousBestReps = best;
+        _isLoadingPreviousBest = false;
+      });
+    } catch (e) {
+      debugPrint('Previous best fetch error: $e');
+      if (!mounted) return;
+      setState(() => _isLoadingPreviousBest = false);
+    }
   }
 
   /// 10-second pre-exercise countdown with TTS
   void _startPreCountdown() {
     if (_isCountingDown) return;
-    _stopListeningForGo();
     setState(() {
       _isCountingDown = true;
       _preCountdownSeconds = 10;
@@ -214,50 +223,6 @@ class _CalibrationScreenState extends State<CalibrationScreen>
     }
   }
 
-  /// Start voice GO listener
-  void _startVoiceGoListener() {
-    if (!_speechAvailable || !widget.voiceTriggerEnabled) return;
-    setState(() => _isListeningForGo = true);
-    _speech.listen(
-      onResult: (r) {
-        if (r.recognizedWords.toUpperCase().contains('GO') && mounted) {
-          _speech.stop();
-          _startPreCountdown();
-        }
-      },
-      listenFor: const Duration(minutes: 5),
-      pauseFor: const Duration(minutes: 5),
-      listenOptions: SpeechListenOptions(
-        cancelOnError: true,
-        listenMode: ListenMode.dictation,
-      ),
-    );
-  }
-
-  void _stopListeningForGo() {
-    _speech.stop();
-    setState(() => _isListeningForGo = false);
-  }
-
-  /// Start voice STOP listener
-  void _startVoiceStopListener() {
-    if (!_speechAvailable || !widget.voiceTriggerEnabled) return;
-    _speech.listen(
-      onResult: (r) {
-        if (r.recognizedWords.toUpperCase().contains('STOP') && mounted) {
-          _speech.stop();
-          _endCalibration();
-        }
-      },
-      listenFor: const Duration(minutes: 30),
-      pauseFor: const Duration(minutes: 30),
-      listenOptions: SpeechListenOptions(
-        cancelOnError: true,
-        listenMode: ListenMode.dictation,
-      ),
-    );
-  }
-
   Future<void> _disposeCamera() async {
     // CRITICAL: Set flag to false SYNCHRONOUSLY first so no rebuild
     // can reach _buildCameraPreview with a disposed/null controller.
@@ -278,7 +243,6 @@ class _CalibrationScreenState extends State<CalibrationScreen>
     _countdownTimer?.cancel();
     _preCountdownTimer?.cancel();
     _tts.stop();
-    _speech.stop();
     final controller = _cameraController;
     _cameraController = null;
     _isCameraInitialized = false;
@@ -339,6 +303,14 @@ class _CalibrationScreenState extends State<CalibrationScreen>
 
   Future<void> _processImage(CameraImage image) async {
     if (_isProcessing || !_isCalibrationActive) return;
+
+    final now = DateTime.now();
+    // Throttle to ~14 FPS (70ms per frame) to reduce wobble while preserving rep-cycle tracking.
+    if (_lastFrameTime != null &&
+        now.difference(_lastFrameTime!).inMilliseconds < 70) {
+      return;
+    }
+    _lastFrameTime = now;
 
     _isProcessing = true;
 
@@ -428,8 +400,9 @@ class _CalibrationScreenState extends State<CalibrationScreen>
       _phase = phase;
       _isCalibrationActive = true;
       _remainingSeconds = widget.durationSeconds;
+      _completedReps = 0;
+      _previousBestReps = null;
     });
-    _startVoiceStopListener();
     _countdownTimer?.cancel();
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
@@ -443,13 +416,29 @@ class _CalibrationScreenState extends State<CalibrationScreen>
     });
   }
 
-  void _endCalibration() {
+  Future<void> _endCalibration() async {
     _countdownTimer?.cancel();
+    final finalReps = _latestResult?.repCount ?? 0;
+
+    // Load previous best BEFORE saving the new record so we can compare
+    await _loadPreviousBest();
+
     setState(() {
       _isCalibrationActive = false;
       _isCalibrationComplete = true;
       _phase = CalibrationPhase.results;
+      _completedReps = finalReps;
     });
+
+    try {
+      await GeminiService.logCalibrationDrill(
+        exerciseType: _exerciseDbType,
+        completedReps: finalReps,
+        durationSeconds: widget.durationSeconds,
+      );
+    } catch (e) {
+      debugPrint('Failed to save drill record: $e');
+    }
   }
 
   @override
@@ -530,12 +519,8 @@ class _CalibrationScreenState extends State<CalibrationScreen>
                 // Rep counter / Tracker (center)
                 if (_isCalibrationActive)
                   RepCounterWidget(
-                    count: _phase == CalibrationPhase.plank
-                        ? _plankSeconds
-                        : _latestResult?.repCount ?? 0,
-                    label: _phase == CalibrationPhase.plank
-                        ? 'SECONDS'
-                        : 'REPS',
+                    count: _latestResult?.repCount ?? 0,
+                    label: 'REPS',
                   ),
 
                 // Form feedback
@@ -822,7 +807,7 @@ class _CalibrationScreenState extends State<CalibrationScreen>
             children: [
               // Calibration header
               Text(
-                AppStrings.calibrationTitle,
+                _drillTitle,
                 style: GoogleFonts.rajdhani(
                   fontSize: 36,
                   fontWeight: FontWeight.w700,
@@ -853,7 +838,7 @@ class _CalibrationScreenState extends State<CalibrationScreen>
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      AppStrings.calibrationInstruction,
+                      _ustadInstruction,
                       textAlign: TextAlign.center,
                       style: GoogleFonts.rajdhani(
                         fontSize: 22,
@@ -888,16 +873,17 @@ class _CalibrationScreenState extends State<CalibrationScreen>
                   onPressed: _isCameraInitialized ? _startPreCountdown : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.neonRed,
-                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 24,
+                      horizontal: 20,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),
                   child: Text(
                     _isCameraInitialized
-                        ? (widget.voiceTriggerEnabled
-                              ? 'SAY "GO" OR PRESS TO START'
-                              : 'START ACCLIMATIZATION')
+                        ? 'START DRILL'
                         : 'INITIALIZING CAMERA...',
                     style: GoogleFonts.orbitron(
                       fontSize: 14,
@@ -979,7 +965,11 @@ class _CalibrationScreenState extends State<CalibrationScreen>
   }
 
   Widget _buildResultsOverlay() {
-    final totalScore = _squatReps + _pushupReps + _plankSeconds;
+    final totalScore = _completedReps;
+    final previousBestText = _isLoadingPreviousBest
+        ? '...'
+        : (_previousBestReps?.toString() ?? 'N/A');
+
     return Container(
       color: AppColors.background.withValues(alpha: 0.95),
       child: SafeArea(
@@ -989,25 +979,25 @@ class _CalibrationScreenState extends State<CalibrationScreen>
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                AppStrings.protocolInitialized,
+                '$_exerciseName DRILL COMPLETE',
+                textAlign: TextAlign.center,
                 style: GoogleFonts.rajdhani(
-                  fontSize: 28,
+                  fontSize: 30,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.success,
+                  color: AppColors.textPrimary,
                   letterSpacing: 4,
                 ),
               ),
-              const SizedBox(height: 8),
-              Container(width: 60, height: 2, color: AppColors.success),
+              const SizedBox(height: 12),
+              Container(width: 80, height: 2, color: AppColors.neonRed),
               const SizedBox(height: 40),
 
-              // Score breakdown
+              // Current and previous records
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  _buildScoreNode('SQUATS', _squatReps),
-                  _buildScoreNode('PUSHUPS', _pushupReps),
-                  _buildScoreNode('PLANK', _plankSeconds, unit: 'S'),
+                  _buildRecordNode('CURRENT DRILL', '$_completedReps'),
+                  _buildRecordNode('PREVIOUS BEST', previousBestText),
                 ],
               ),
               const SizedBox(height: 40),
@@ -1034,7 +1024,10 @@ class _CalibrationScreenState extends State<CalibrationScreen>
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      _getAssessment(totalScore),
+                      _previousBestReps != null &&
+                              _completedReps > _previousBestReps!
+                          ? 'NEW PERSONAL BEST. KEEP THIS STANDARD.'
+                          : _getAssessment(totalScore),
                       textAlign: TextAlign.center,
                       style: GoogleFonts.rajdhani(
                         fontSize: 18,
@@ -1047,6 +1040,36 @@ class _CalibrationScreenState extends State<CalibrationScreen>
                 ),
               ),
               const SizedBox(height: 40),
+
+              // Reperform button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    await _disposeCamera();
+                    if (mounted) context.go(AppRoutes.calibrationSetup);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4),
+                      side: const BorderSide(color: AppColors.neonRed),
+                    ),
+                  ),
+                  child: Text(
+                    'REPERFORM DRILL',
+                    style: GoogleFonts.orbitron(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 2.5,
+                      color: AppColors.neonRed,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
 
               // Continue button
               SizedBox(
@@ -1095,11 +1118,11 @@ class _CalibrationScreenState extends State<CalibrationScreen>
     );
   }
 
-  Widget _buildScoreNode(String label, int score, {String unit = ''}) {
+  Widget _buildRecordNode(String label, String value) {
     return Column(
       children: [
         Text(
-          '$score$unit',
+          value,
           style: GoogleFonts.rajdhani(
             fontSize: 48,
             fontWeight: FontWeight.w700,
@@ -1121,14 +1144,14 @@ class _CalibrationScreenState extends State<CalibrationScreen>
   }
 
   String _getAssessment(int score) {
-    if (score < 30) {
-      return 'PATHETIC. THE USTAD EXPECTED AS MUCH.\nYOU HAVE 28 DAYS TO PROVE HIM WRONG.';
-    } else if (score < 60) {
-      return 'WEAK, BUT NOT HOPELESS.\nTHE PROTOCOL WILL FIX YOU.';
-    } else if (score < 90) {
-      return 'ACCEPTABLE.\nBUT YOU HAVEN\'T EARNED THE USTAD\'S RESPECT YET.';
+    if (score < 12) {
+      return 'BASELINE CAPTURED. WE BUILD FROM HERE.';
+    } else if (score < 25) {
+      return 'SOLID WORK. NEXT DRILL: CLEANER DEPTH AND RHYTHM.';
+    } else if (score < 40) {
+      return 'STRONG OUTPUT. MAINTAIN FORM UNDER FATIGUE.';
     } else {
-      return 'IMPRESSIVE. THE USTAD IS... SLIGHTLY LESS DISAPPOINTED.\nLET\'S SEE IF YOU CAN MAINTAIN THIS FOR 28 DAYS.';
+      return 'ELITE BASELINE. NOW PROVE IT CONSISTENTLY.';
     }
   }
 }
@@ -1175,4 +1198,4 @@ class SquatSilhouettePainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-enum CalibrationPhase { warmup, squat, pushup, plank, results }
+enum CalibrationPhase { warmup, squat, pushup, results }

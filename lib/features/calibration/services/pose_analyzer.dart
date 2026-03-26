@@ -36,18 +36,22 @@ class PoseAnalysisResult {
 class PoseAnalyzer {
   ExercisePhase _currentPhase = ExercisePhase.resting;
   int _repCount = 0;
+  final bool _forceSideOnlyPushup;
 
   // Anti-cheat HOLD tracking
   bool _holdActive = false;
   DateTime? _holdStartTime;
   final Random _random = Random();
   int _nextHoldRep = -1;
+  DateTime? _lastRepTime;
 
   // Side-locking for stability
   bool? _lockedIsLeftLegDominant;
   int _consecutiveLowConfidenceFrames = 0;
   double? _smoothedSquatAngle;
   double? _smoothedPushupAngle;
+  double? _pushupTopDepth;
+  int _pushupTopDepthFrames = 0;
   double? _standingHipDepth;
   double? _standingKneeDepth;
   int _standingBaselineFrames = 0;
@@ -55,18 +59,32 @@ class PoseAnalyzer {
   int get repCount => _repCount;
   ExercisePhase get currentPhase => _currentPhase;
 
-  PoseAnalyzer() {
+  PoseAnalyzer({bool forceSideOnlyPushup = true})
+    : _forceSideOnlyPushup = forceSideOnlyPushup {
     _scheduleNextHold();
+  }
+
+  void _incrementRep() {
+    final now = DateTime.now();
+    if (_lastRepTime == null ||
+        now.difference(_lastRepTime!) > const Duration(milliseconds: 450)) {
+      _repCount++;
+      _lastRepTime = now;
+    }
   }
 
   void reset() {
     _currentPhase = ExercisePhase.resting;
     _repCount = 0;
+    _lastRepTime = null;
     _holdActive = false;
     _holdStartTime = null;
     _lockedIsLeftLegDominant = null;
     _consecutiveLowConfidenceFrames = 0;
     _smoothedSquatAngle = null;
+    _smoothedPushupAngle = null;
+    _pushupTopDepth = null;
+    _pushupTopDepthFrames = 0;
     _standingHipDepth = null;
     _standingKneeDepth = null;
     _standingBaselineFrames = 0;
@@ -378,7 +396,7 @@ class PoseAnalyzer {
         // Only count a rep when they reach full standing
         if (effectiveAngle >= ExerciseConstants.squatUpAngle - 10) {
           _currentPhase = ExercisePhase.resting;
-          _repCount++;
+          _incrementRep();
         } else if (effectiveAngle <= ExerciseConstants.squatDownAngle) {
           // If they dip back down before standing, reset to active
           _currentPhase = ExercisePhase.active;
@@ -397,11 +415,18 @@ class PoseAnalyzer {
     );
   }
 
+  double _distance(PoseLandmark a, PoseLandmark b) {
+    return sqrt(pow(a.x - b.x, 2) + pow(a.y - b.y, 2));
+  }
+
   PoseAnalysisResult _analyzePushup(
     Map<PoseLandmarkType, PoseLandmark> landmarks,
   ) {
     bool isGoodForm = true;
     String? feedback;
+    bool sideBottomReached = false;
+    bool sideTopReached = false;
+    double sideDepthDrop = 0.0;
 
     final nose = landmarks[PoseLandmarkType.nose];
     final leftShoulder = landmarks[PoseLandmarkType.leftShoulder];
@@ -413,12 +438,44 @@ class PoseAnalyzer {
 
     final leftHip = landmarks[PoseLandmarkType.leftHip];
     final rightHip = landmarks[PoseLandmarkType.rightHip];
-    final leftKnee = landmarks[PoseLandmarkType.leftKnee];
-    final rightKnee = landmarks[PoseLandmarkType.rightKnee];
     final leftAnkle = landmarks[PoseLandmarkType.leftAnkle];
     final rightAnkle = landmarks[PoseLandmarkType.rightAnkle];
 
-    // Determine front view based heavily on wrists since they don't get occluded like shoulders
+    double rawAngle = 180.0;
+
+    final hasLeftArm =
+        leftShoulder != null &&
+        leftElbow != null &&
+        leftWrist != null &&
+        leftShoulder.likelihood > 0.4 &&
+        leftElbow.likelihood > 0.4 &&
+        leftWrist.likelihood > 0.4;
+    final hasRightArm =
+        rightShoulder != null &&
+        rightElbow != null &&
+        rightWrist != null &&
+        rightShoulder.likelihood > 0.4 &&
+        rightElbow.likelihood > 0.4 &&
+        rightWrist.likelihood > 0.4;
+
+    if (!hasLeftArm && !hasRightArm) {
+      return PoseAnalysisResult(
+        phase: _currentPhase,
+        repCount: _repCount,
+        isGoodForm: false,
+        formFeedback: 'ARMS NOT VISIBLE',
+      );
+    }
+
+    final leftLikelihood = hasLeftArm
+        ? leftShoulder.likelihood + leftElbow.likelihood + leftWrist.likelihood
+        : 0.0;
+    final rightLikelihood = hasRightArm
+        ? rightShoulder.likelihood +
+              rightElbow.likelihood +
+              rightWrist.likelihood
+        : 0.0;
+
     final hasBothWrists =
         leftWrist != null &&
         leftWrist.likelihood > 0.4 &&
@@ -431,194 +488,254 @@ class PoseAnalyzer {
         ? (leftShoulder.x - rightShoulder.x).abs()
         : 0.0;
 
-    // A robust front profile check leveraging planted wrists as the ultimate source of truth
-    final isFrontProfile =
-        (hasBothWrists && wristWidth > 0.15) ||
-        (hasBothShoulders &&
-            leftShoulder.likelihood > 0.5 &&
-            rightShoulder.likelihood > 0.5 &&
-            shoulderWidth > 0.15);
+    final strongArmScore = max(leftLikelihood, rightLikelihood);
+    final weakArmScore = min(leftLikelihood, rightLikelihood);
+    final sideDominantArm =
+        (hasLeftArm != hasRightArm) ||
+        (strongArmScore > 0.0 && weakArmScore < strongArmScore * 0.62);
 
-    double rawAngle = 180.0;
+    // Temporary side-only mode: force side logic for pushup stabilization.
+    var isFrontProfile =
+        !sideDominantArm &&
+        ((hasBothWrists && wristWidth > 0.17) ||
+            (hasBothShoulders &&
+                leftShoulder.likelihood > 0.5 &&
+                rightShoulder.likelihood > 0.5 &&
+                shoulderWidth > 0.22));
+    if (_forceSideOnlyPushup) {
+      isFrontProfile = false;
+    }
+
+    final leftArmLength = hasLeftArm
+        ? _distance(leftShoulder, leftElbow) + _distance(leftElbow, leftWrist)
+        : 0.0;
+    final rightArmLength = hasRightArm
+        ? _distance(rightShoulder, rightElbow) +
+              _distance(rightElbow, rightWrist)
+        : 0.0;
+    final leftDominanceScore = leftLikelihood + (leftArmLength * 1.4);
+    final rightDominanceScore = rightLikelihood + (rightArmLength * 1.4);
+    final isLeftDominant = leftDominanceScore >= rightDominanceScore;
+    final domShoulder = isLeftDominant ? leftShoulder! : rightShoulder!;
+    final domElbow = isLeftDominant ? leftElbow! : rightElbow!;
+    final domWrist = isLeftDominant ? leftWrist! : rightWrist!;
+    final domHip = isLeftDominant ? leftHip : rightHip;
+    final domAnkle = isLeftDominant ? leftAnkle : rightAnkle;
+    final domElbowAngle = calculateAngle(domShoulder, domElbow, domWrist);
+    final lockoutAngleThreshold = isFrontProfile ? 145.0 : 138.0;
+    final armsLockoutReached = domElbowAngle >= lockoutAngleThreshold;
 
     // STANDING / WALKING ANTI-CHEAT
-    // If the angle from their head/shoulder down to their hips/ankles is clearly vertical, completely override.
     bool completelyStanding = false;
-    final domShoulderSafe =
-        leftShoulder != null && leftShoulder.likelihood > 0.4
-        ? leftShoulder
-        : (rightShoulder != null && rightShoulder.likelihood > 0.4
-              ? rightShoulder
-              : null);
-    final domHipSafe = leftHip != null && leftHip.likelihood > 0.4
-        ? leftHip
-        : (rightHip != null && rightHip.likelihood > 0.4 ? rightHip : null);
-    final domAnkleSafe = leftAnkle != null && leftAnkle.likelihood > 0.4
-        ? leftAnkle
-        : (rightAnkle != null && rightAnkle.likelihood > 0.4
-              ? rightAnkle
-              : null);
-
-    if (domShoulderSafe != null) {
-      if (domAnkleSafe != null) {
-        final slope =
-            atan2(
-              (domAnkleSafe.y - domShoulderSafe.y).abs(),
-              (domAnkleSafe.x - domShoulderSafe.x).abs(),
-            ) *
-            180 /
-            pi;
-        if (slope > 60) completelyStanding = true;
-      } else if (domHipSafe != null) {
-        final slope =
-            atan2(
-              (domHipSafe.y - domShoulderSafe.y).abs(),
-              (domHipSafe.x - domShoulderSafe.x).abs(),
-            ) *
-            180 /
-            pi;
-        if (slope > 65) completelyStanding = true;
-      } else if (nose != null) {
-        final slope =
-            atan2(
-              (domShoulderSafe.y - nose.y).abs(),
-              (domShoulderSafe.x - nose.x).abs(),
-            ) *
-            180 /
-            pi;
-        if (slope > 65) completelyStanding = true;
-      }
+    if (domAnkle != null && domAnkle.likelihood > 0.4) {
+      final slope =
+          atan2(
+            (domAnkle.y - domShoulder.y).abs(),
+            (domAnkle.x - domShoulder.x).abs(),
+          ) *
+          180 /
+          pi;
+      if (slope > 60) completelyStanding = true;
+    } else if (domHip != null && domHip.likelihood > 0.4) {
+      final slope =
+          atan2(
+            (domHip.y - domShoulder.y).abs(),
+            (domHip.x - domShoulder.x).abs(),
+          ) *
+          180 /
+          pi;
+      if (slope > 65) completelyStanding = true;
+    } else if (nose != null) {
+      final slope =
+          atan2(
+            (domShoulder.y - nose.y).abs(),
+            (domShoulder.x - nose.x).abs(),
+          ) *
+          180 /
+          pi;
+      if (slope > 65) completelyStanding = true;
     }
 
     if (completelyStanding) {
-      rawAngle = 180.0; // Force them fully "up"
+      rawAngle = 180.0;
       isGoodForm = false;
       feedback = 'GET ON THE FLOOR';
     } else {
-      // PROPER PUSHUP LOGIC
       if (isFrontProfile) {
-        // At the bottom of a front pushup, shoulders lose visibility due to the face. Fall back to Nose!
-        final headY = nose?.y ?? (domShoulderSafe?.y ?? 0);
-        final avgWristY = hasBothWrists
-            ? (leftWrist.y + rightWrist.y) / 2
-            : (leftWrist?.y ?? rightWrist?.y ?? headY);
+        _pushupTopDepthFrames = 0;
+        // Dynamic Baseline Mapping for Front Profile
+        final armLength =
+            _distance(domShoulder, domElbow) + _distance(domElbow, domWrist);
 
-        // yDist: The distance dropping toward the floor.
-        final yDist = (headY - avgWristY).abs();
+        final headY = nose != null && domShoulder.likelihood < 0.6
+            ? nose.y
+            : domShoulder.y;
+        final yDiff = (headY - domWrist.y).abs();
 
-        // Use wristWidth as a stable scale unit, fallback if extremely narrow
-        final safeWristWidth = max(wristWidth, 0.1);
-        // 1.5x wrist width is roughly the drop difference from top to bottom
-        final ratio = (yDist / (safeWristWidth * 1.5)).clamp(0.0, 1.0);
+        final safeArmLength = max(armLength, 0.1);
+        final ratio = (yDiff / (safeArmLength * 0.9)).clamp(
+          0.0,
+          1.0,
+        ); // 0.9 multiplier to account for shoulder width
 
-        // If yDist is huge (at top of rep), ratio -> 1.0 -> 180 deg
-        // If yDist is zero (head touching floor), ratio -> 0.0 -> 90 deg
+        // Map ratio to 90 (bottom) - 180 (top) degrees to use existing constants
         rawAngle = 90.0 + (ratio * 90.0);
-
-        if (hasBothWrists && nose != null && avgWristY < nose.y) {
+        if (domWrist.y < headY) {
           rawAngle =
               180.0; // Anti cheat: wrists flew above face. Prevent flapping!
         }
-      } else {
-        // SIDE PROFILE
-        final hasLeftArm =
-            leftShoulder != null &&
-            leftElbow != null &&
-            leftWrist != null &&
-            leftShoulder.likelihood > 0.4 &&
-            leftElbow.likelihood > 0.4 &&
-            leftWrist.likelihood > 0.4;
-        final hasRightArm =
-            rightShoulder != null &&
-            rightElbow != null &&
-            rightWrist != null &&
-            rightShoulder.likelihood > 0.4 &&
-            rightElbow.likelihood > 0.4 &&
-            rightWrist.likelihood > 0.4;
 
-        if (!hasLeftArm && !hasRightArm) {
-          return PoseAnalysisResult(
-            phase: _currentPhase,
-            repCount: _repCount,
-            isGoodForm: false,
-            formFeedback: 'ARMS NOT VISIBLE',
-          );
+        // Anti-cheat for Front Profile
+        if (domHip != null && domHip.likelihood > 0.4) {
+          if (ratio < 0.3) {
+            // bottom of pushup
+            final hipDrop = (domHip.y - domWrist.y).abs();
+            if (hipDrop > safeArmLength * 0.7) {
+              isGoodForm = false;
+              feedback = 'LOWER YOUR HIPS';
+            }
+          }
+        }
+      } else {
+        // SIDE PROFILE LOGIC (adaptive, like squat baseline)
+        final armLength =
+            _distance(domShoulder, domElbow) + _distance(domElbow, domWrist);
+        final safeArmLength = max(armLength, 0.1);
+        final upperArmLength = max(_distance(domShoulder, domElbow), 0.1);
+        final currentDepth = ((domWrist.y - domShoulder.y) / safeArmLength)
+            .clamp(-0.3, 1.6);
+
+        if (_currentPhase == ExercisePhase.resting) {
+          _pushupTopDepthFrames++;
+          if (_pushupTopDepth == null) {
+            _pushupTopDepth = currentDepth;
+          } else {
+            _pushupTopDepth =
+                (_pushupTopDepth! *
+                    (1 - ExerciseConstants.squatBaselineSmoothing)) +
+                (currentDepth * ExerciseConstants.squatBaselineSmoothing);
+          }
         }
 
-        final leftLikelihood = hasLeftArm
-            ? (leftShoulder.likelihood +
-                  leftElbow.likelihood +
-                  leftWrist.likelihood)
+        final baselineReady =
+            _pushupTopDepth != null && _pushupTopDepthFrames >= 2;
+
+        sideDepthDrop = baselineReady
+            ? (_pushupTopDepth! - currentDepth).clamp(0.0, 1.2)
             : 0.0;
-        final rightLikelihood = hasRightArm
-            ? (rightShoulder.likelihood +
-                  rightElbow.likelihood +
-                  rightWrist.likelihood)
-            : 0.0;
+        sideTopReached = !baselineReady || sideDepthDrop <= 0.04;
 
-        final isLeftDominant = leftLikelihood > rightLikelihood;
-        final domShoulder = isLeftDominant ? leftShoulder! : rightShoulder!;
-        final domElbow = isLeftDominant ? leftElbow! : rightElbow!;
-        final domWrist = isLeftDominant ? leftWrist! : rightWrist!;
-        final domHip = isLeftDominant ? leftHip : rightHip;
-        final domAnkle = isLeftDominant ? leftAnkle : rightAnkle;
-        final domKnee = isLeftDominant ? leftKnee : rightKnee;
+        final dropProgress = (sideDepthDrop / 0.08).clamp(0.0, 1.0);
+        final syntheticAngle = 175.0 - (dropProgress * 95.0);
+        rawAngle = syntheticAngle;
 
-        rawAngle = calculateAngle(domShoulder, domElbow, domWrist);
+        final shoulderDepthReached =
+            domShoulder.y >= (domElbow.y - (upperArmLength * 0.30));
 
+        final shoulderCloseToWrist =
+            (domWrist.y - domShoulder.y) <= (safeArmLength * 0.55);
+
+        final reachedBottomFromDrop = baselineReady && sideDepthDrop >= 0.06;
+
+        // If shoulder reaches elbow depth or top-baseline drop is large enough, force bottom detection.
+        if (shoulderDepthReached ||
+            shoulderCloseToWrist ||
+            reachedBottomFromDrop) {
+          sideBottomReached = true;
+          rawAngle = min(rawAngle, ExerciseConstants.pushupDownAngle - 8);
+        }
+
+        // Prevent false positives when hand rises high instead of staying planted.
+        if (domWrist.y < domElbow.y - (upperArmLength * 0.1)) {
+          isGoodForm = false;
+          feedback = 'KEEP HAND PLANTED';
+          rawAngle = max(rawAngle, ExerciseConstants.pushupUpAngle);
+        }
+
+        // Enforce back angle only if visible, don't fail if occluded
         if (domHip != null &&
-            domAnkle != null &&
             domHip.likelihood > 0.4 &&
+            domAnkle != null &&
             domAnkle.likelihood > 0.4) {
           final backAngle = calculateAngle(domShoulder, domHip, domAnkle);
           if (backAngle < 145) {
             isGoodForm = false;
             feedback = 'KEEP BACK STRAIGHT';
           }
-          if (domKnee != null && domKnee.likelihood > 0.4) {
-            final kneeAngle = calculateAngle(domHip, domKnee, domAnkle);
-            if (kneeAngle < 140) {
-              isGoodForm = false;
-              feedback = 'STRAIGHTEN KNEES';
-            }
-          }
         }
       }
     }
 
+    final pushupSmoothing = rawAngle <= ExerciseConstants.pushupDownAngle + 8
+        ? 0.6
+        : ExerciseConstants.squatAngleSmoothing;
     _smoothedPushupAngle = _smoothedPushupAngle == null
         ? rawAngle
-        : (_smoothedPushupAngle! *
-                  (1 - ExerciseConstants.squatAngleSmoothing)) +
-              (rawAngle * ExerciseConstants.squatAngleSmoothing);
+        : (_smoothedPushupAngle! * (1 - pushupSmoothing)) +
+              (rawAngle * pushupSmoothing);
     final effectiveAngle = _smoothedPushupAngle!;
 
     switch (_currentPhase) {
       case ExercisePhase.resting:
-        if (effectiveAngle < ExerciseConstants.pushupUpAngle - 10 &&
-            !completelyStanding) {
-          _currentPhase = ExercisePhase.descending;
+        if (!completelyStanding) {
+          if (isFrontProfile) {
+            if (effectiveAngle < ExerciseConstants.pushupUpAngle - 10) {
+              _currentPhase = ExercisePhase.descending;
+            }
+          } else {
+            if (sideDepthDrop >= 0.03) {
+              _currentPhase = ExercisePhase.descending;
+            }
+          }
         }
         break;
       case ExercisePhase.descending:
-        if (effectiveAngle <= ExerciseConstants.pushupDownAngle) {
+        if (isFrontProfile &&
+                effectiveAngle <= ExerciseConstants.pushupDownAngle ||
+            sideBottomReached ||
+            (!isFrontProfile && sideDepthDrop >= 0.05)) {
           _currentPhase = ExercisePhase.active;
-        } else if (effectiveAngle >= ExerciseConstants.pushupUpAngle - 10) {
+        } else if (isFrontProfile &&
+            effectiveAngle >= ExerciseConstants.pushupUpAngle - 10) {
           _currentPhase = ExercisePhase.resting;
           isGoodForm = false;
           feedback = 'GO DEEPER';
         }
         break;
       case ExercisePhase.active:
-        if (effectiveAngle > ExerciseConstants.pushupDownAngle + 10) {
+        if (isFrontProfile) {
+          if (effectiveAngle > ExerciseConstants.pushupDownAngle + 10) {
+            _currentPhase = ExercisePhase.ascending;
+          }
+        } else if (sideDepthDrop <= 0.05) {
           _currentPhase = ExercisePhase.ascending;
         }
         break;
       case ExercisePhase.ascending:
-        if (effectiveAngle >= ExerciseConstants.pushupUpAngle - 10) {
-          _currentPhase = ExercisePhase.resting;
-          _repCount++;
-        } else if (effectiveAngle <= ExerciseConstants.pushupDownAngle) {
+        if (isFrontProfile) {
+          if (effectiveAngle >= ExerciseConstants.pushupUpAngle - 10) {
+            if (armsLockoutReached) {
+              _currentPhase = ExercisePhase.resting;
+              _incrementRep();
+            } else {
+              isGoodForm = false;
+              feedback = 'LOCK OUT ARMS';
+            }
+          } else if (effectiveAngle <= ExerciseConstants.pushupDownAngle) {
+            // NOTE: Fix ExerciseConstants
+            _currentPhase = ExercisePhase.active;
+            isGoodForm = false;
+            feedback = 'PUSH UP FULLY';
+          }
+        } else if (sideTopReached) {
+          if (armsLockoutReached) {
+            _currentPhase = ExercisePhase.resting;
+            _incrementRep();
+          } else {
+            isGoodForm = false;
+            feedback = 'LOCK OUT ARMS';
+          }
+        } else if (sideBottomReached || sideDepthDrop >= 0.06) {
           // NOTE: Fix ExerciseConstants
           _currentPhase = ExercisePhase.active;
           isGoodForm = false;

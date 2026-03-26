@@ -11,10 +11,7 @@ class GeminiService {
   }) async {
     final response = await _supabase.functions.invoke(
       'generate-workout-plan',
-      body: {
-        'calibration_score': calibrationScore,
-        'language': language,
-      },
+      body: {'calibration_score': calibrationScore, 'language': language},
     );
 
     if (response.status != 200) {
@@ -32,11 +29,7 @@ class GeminiService {
   }) async {
     final response = await _supabase.functions.invoke(
       'generate-diet-plan',
-      body: {
-        'budget_tier': budgetTier,
-        'language': language,
-        'region': region,
-      },
+      body: {'budget_tier': budgetTier, 'language': language, 'region': region},
     );
 
     if (response.status != 200) {
@@ -126,5 +119,48 @@ class GeminiService {
         .order('day_number', ascending: false);
 
     return List<Map<String, dynamic>>.from(response);
+  }
+
+  /// Get all-time best completed reps for one exercise.
+  static Future<int?> getBestCompletedRepsForExercise({
+    required String exerciseType,
+  }) async {
+    final user = _supabase.auth.currentUser;
+    if (user == null) return null;
+
+    final response = await _supabase
+        .from('daily_logs')
+        .select('completed_reps')
+        .eq('user_id', user.id)
+        .eq('exercise_type', exerciseType)
+        .order('completed_reps', ascending: false)
+        .limit(1);
+
+    final records = List<Map<String, dynamic>>.from(response);
+    if (records.isEmpty) return null;
+    return records.first['completed_reps'] as int?;
+  }
+
+  /// Log a drill attempt without changing day/streak progression.
+  static Future<void> logCalibrationDrill({
+    required String exerciseType,
+    required int completedReps,
+    required int durationSeconds,
+  }) async {
+    final user = _supabase.auth.currentUser;
+    if (user == null) return;
+
+    await _supabase.from('daily_logs').insert({
+      'user_id': user.id,
+      'day_number': 0,
+      'exercise_type': exerciseType,
+      'target_reps': completedReps,
+      'completed_reps': completedReps,
+      'hold_challenges_passed': 0,
+      'hold_challenges_failed': 0,
+      'duration_seconds': durationSeconds,
+      'completed_at': DateTime.now().toIso8601String(),
+      'status': 'completed',
+    });
   }
 }
