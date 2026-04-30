@@ -1,0 +1,105 @@
+<<<<
+      } else if (_isBiometricLocked && _isCalibrationActive) {
+        if (!faceFoundOnBody) {
+          // Rule 1: No face at all on the body (e.g. they turned backwards or went off screen)
+          if (!_isFaceNotVisible) {
+            setState(() {
+              _isFaceNotVisible = true;
+              _isBodySwapSuspended = false; // ensure it doesn't say body swap
+            });
+            _tts.speak("Face not visible properly.");
+          }
+        } else {
+          // Face found on body. Evaluate whose face it is.
+          if (currentDetectedFaceId != null) {
+            if (currentDetectedFaceId != _lockedFaceId) {
+              // Tracking ID changed.
+              // If face was previously not visible, it's the original user returning (tracking ID reset).
+              // Relock silently.
+              if (_isFaceNotVisible) {
+                setState(() {
+                  _lockedFaceId = currentDetectedFaceId;
+                  _isFaceNotVisible = false;
+                  _isBodySwapSuspended = false;
+                });
+                _tts.speak("Face locked. Resuming.");
+              } else {
+                // Rule 2: Swapped! Face was continually visible but ID abruptly changed!
+                if (!_isBodySwapSuspended) {
+                  setState(() {
+                    _isBodySwapSuspended = true;
+                    _isFaceNotVisible = false;
+                  });
+                  _tts.speak("Body swap detected. Original user must return.");
+                }
+              }
+            } else {
+              // Verified! Right person.
+              if (_isBodySwapSuspended || _isFaceNotVisible) {
+                setState(() {
+                  _isBodySwapSuspended = false;
+                  _isFaceNotVisible = false;
+                });
+                _tts.speak("Identity verified. Resuming.");
+              }
+            }
+          }
+        }
+      }
+====
+      } else if (_isBiometricLocked && _isCalibrationActive) {
+        if (!faceFoundOnBody) {
+          // Grace Period for turning away
+          _missedFaceFrames++;
+          if (_missedFaceFrames >= 4 && !_isFaceNotVisible) {
+            setState(() {
+              _isFaceNotVisible = true;
+              _isBodySwapSuspended = false;
+            });
+            _tts.speak("Face not visible properly.");
+          }
+        } else {
+          _missedFaceFrames = 0;
+          
+          if (currentDetectedFaceId != null) {
+            if (currentDetectedFaceId != _lockedFaceId) {
+               // Track ID Changed.
+               if (_isFaceNotVisible) {
+                 // Returning from being hidden, relock silently.
+                 setState(() {
+                   _lockedFaceId = currentDetectedFaceId;
+                   _isFaceNotVisible = false;
+                   _isBodySwapSuspended = false;
+                 });
+                 _tts.speak("Face logged. Resuming.");
+               } else if (faces.length > 1) {
+                 // Multiple faces detected AND tracking ID abruptly changed. High chance of swap!
+                 if (!_isBodySwapSuspended) {
+                    setState(() {
+                      _isBodySwapSuspended = true;
+                      _isFaceNotVisible = false;
+                    });
+                    _tts.speak("Body swap detected! Original user must return.");
+                 }
+               } else {
+                 // Single face in frame but ML Kit lost tracking ID (very common during movement).
+                 // Relock silently to avoid annoying the user.
+                 setState(() {
+                   _lockedFaceId = currentDetectedFaceId;
+                 });
+               }
+            } else {
+               // Verified! Identity confirmed.
+               if (_isBodySwapSuspended || _isFaceNotVisible) {
+                 setState(() {
+                   _lockedFaceId = currentDetectedFaceId;
+                   _isBodySwapSuspended = false;
+                   _isFaceNotVisible = false;
+                 });
+                 _tts.speak("Identity verified! Keep going.");
+               }
+            }
+          }
+        }
+      }
+>>>>

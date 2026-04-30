@@ -1,0 +1,8 @@
+{
+  "action": "generate_dossier",
+  "payload": {
+    "pushupMax": 20,
+    "squatMax": 30,
+    "primaryGoal": "Test"
+  }
+}
