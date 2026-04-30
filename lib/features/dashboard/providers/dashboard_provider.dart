@@ -302,7 +302,8 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
     Duration remain = Duration.zero;
     Duration criticalRemain = Duration.zero;
 
-    if (state.protocolStartDate != null &&
+    if (state.isSubscriber &&
+        state.protocolStartDate != null &&
         state.protocolTitle != 'NO ACTIVE MISSION') {
       final logs = (state.profileData!['workout_logs'] as List?) ?? [];
       final completedDays = logs.length;
@@ -328,8 +329,9 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
         }
       }
     } else {
-      remain = deadline.difference(now);
-      if (remain.isNegative) remain = Duration.zero;
+      // No active mission or not a subscriber, no countdown
+      remain = Duration.zero;
+      isCritical = false;
     }
 
     state = state.copyWith(

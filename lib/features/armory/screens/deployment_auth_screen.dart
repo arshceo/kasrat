@@ -94,9 +94,10 @@ class _DeploymentAuthScreenState extends State<DeploymentAuthScreen> {
       debugPrint('Sync Error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('SYNC ERROR: CHECK CONNECTION'),
+          SnackBar(
+            content: Text('SYNC ERROR: ${e.toString().toUpperCase()}'),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
           ),
         );
       }
@@ -173,181 +174,181 @@ class _DeploymentAuthScreenState extends State<DeploymentAuthScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-              const SizedBox(height: 40),
-              Text(
-                'DEPLOYMENT AUTHENTICATION',
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.white,
-                  letterSpacing: 2,
+                const SizedBox(height: 40),
+                Text(
+                  'DEPLOYMENT AUTHENTICATION',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: 2,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'SKIN IN THE GAME REQUIRED',
-                style: GoogleFonts.spaceMono(
-                  fontSize: 12,
-                  color: AppColors.neonRed,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 4,
+                const SizedBox(height: 12),
+                Text(
+                  'SKIN IN THE GAME REQUIRED',
+                  style: GoogleFonts.spaceMono(
+                    fontSize: 12,
+                    color: AppColors.neonRed,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 4,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 60),
-              Container(
-                padding: const EdgeInsets.all(32),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceContainerLowest,
-                  border: Border.all(color: AppColors.outlineVariant),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      'YOUR AUTHENTICATION CODE',
-                      style: GoogleFonts.spaceMono(
-                        fontSize: 10,
-                        color: AppColors.textSecondary,
-                        letterSpacing: 1,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    GestureDetector(
-                      onTap: () {
-                        Clipboard.setData(ClipboardData(text: _authCode));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('CODE COPIED TO CLIPBOARD')),
-                        );
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-                        color: Colors.black,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Flexible(
-                              child: Text(
-                                _authCode,
-                                style: GoogleFonts.spaceMono(
-                                  fontSize: 28, // Increased for visibility
-                                  fontWeight: FontWeight.w900,
-                                  color: AppColors.neonRed,
-                                  letterSpacing: 8, // More space between chars
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                            const SizedBox(width: 20),
-                            const Icon(Icons.copy, size: 24, color: AppColors.neonRed),
-                          ],
+                const SizedBox(height: 60),
+                Container(
+                  padding: const EdgeInsets.all(32),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceContainerLowest,
+                    border: Border.all(color: AppColors.outlineVariant),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        'YOUR AUTHENTICATION CODE',
+                        style: GoogleFonts.spaceMono(
+                          fontSize: 10,
+                          color: AppColors.textSecondary,
+                          letterSpacing: 1,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'TAP TO COPY CODE',
-                      style: GoogleFonts.spaceMono(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textMuted,
+                      const SizedBox(height: 16),
+                      GestureDetector(
+                        onTap: () {
+                          Clipboard.setData(ClipboardData(text: _authCode));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('CODE COPIED TO CLIPBOARD')),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                          color: Colors.black,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  _authCode,
+                                  style: GoogleFonts.spaceMono(
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.w900,
+                                    color: AppColors.neonRed,
+                                    letterSpacing: 8,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                              const SizedBox(width: 20),
+                              const Icon(Icons.copy, size: 24, color: AppColors.neonRed),
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      'Copy this code and paste it into the Ustad Terminal to authorize your deployment.',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                        height: 1.5,
+                      const SizedBox(height: 12),
+                      Text(
+                        'TAP TO COPY CODE',
+                        style: GoogleFonts.spaceMono(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textMuted,
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 24),
+                      Text(
+                        'Copy this code and paste it into the Ustad Terminal to authorize your deployment.',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                          height: 1.5,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 40),
-              if (_isLoading)
-                const Center(child: CircularProgressIndicator(color: AppColors.neonRed))
-              else if (_isPaid)
-                Column(
-                  children: [
-                    const Icon(Icons.check_circle, color: Colors.green, size: 48),
-                    const SizedBox(height: 16),
-                    Text(
-                      'PAYMENT VERIFIED',
-                      style: GoogleFonts.spaceGrotesk(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.greenAccent,
-                        letterSpacing: 2,
+                const SizedBox(height: 40),
+                if (_isLoading)
+                  const Center(child: CircularProgressIndicator(color: AppColors.neonRed))
+                else if (_isPaid)
+                  Column(
+                    children: [
+                      const Icon(Icons.check_circle, color: Colors.green, size: 48),
+                      const SizedBox(height: 16),
+                      Text(
+                        'PAYMENT VERIFIED',
+                        style: GoogleFonts.spaceGrotesk(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.greenAccent,
+                          letterSpacing: 2,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'AUTHENTICATION SUCCESSFUL.\nDEPLOYMENT AUTHORIZED.',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.spaceMono(
-                        fontSize: 12,
-                        color: Colors.white70,
-                        fontWeight: FontWeight.bold,
+                      const SizedBox(height: 12),
+                      Text(
+                        'AUTHENTICATION SUCCESSFUL.\nDEPLOYMENT AUTHORIZED.',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.spaceMono(
+                          fontSize: 12,
+                          color: Colors.white70,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 32),
-                    TacticalButton(
-                      onTap: _launchTerminal,
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(20),
-                        color: Colors.white,
-                        child: Center(
-                          child: Text(
-                            'GO TO WEBSITE',
-                            style: GoogleFonts.spaceGrotesk(
-                              fontWeight: FontWeight.w900,
-                              color: Colors.black,
+                      const SizedBox(height: 32),
+                      TacticalButton(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
+                          color: Colors.white,
+                          child: Center(
+                            child: Text(
+                              'BACK TO DASHBOARD',
+                              style: GoogleFonts.spaceGrotesk(
+                                fontWeight: FontWeight.w900,
+                                color: Colors.black,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                )
-              else
-                TacticalButton(
-                  onTap: _launchTerminal,
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    color: AppColors.neonRed,
-                    child: Center(
-                      child: Text(
-                        'GO TO WEBSITE',
-                        style: GoogleFonts.spaceGrotesk(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.white,
+                    ],
+                  )
+                else
+                  TacticalButton(
+                    onTap: _launchTerminal,
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      color: AppColors.neonRed,
+                      child: Center(
+                        child: Text(
+                          'GO TO WEBSITE',
+                          style: GoogleFonts.spaceGrotesk(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
                   ),
+                const SizedBox(height: 24),
+                Text(
+                  'Waiting for external verification...',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.spaceMono(
+                    fontSize: 10,
+                    color: AppColors.textMuted,
+                  ),
                 ),
-              const SizedBox(height: 24),
-              Text(
-                'Waiting for external verification...',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.spaceMono(
-                  fontSize: 10,
-                  color: AppColors.textMuted,
-                ),
-              ),
-              const SizedBox(height: 24),
-            ],
+                const SizedBox(height: 24),
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 }

@@ -41,13 +41,24 @@ class PreMissionSection extends StatelessWidget {
             buttonLabel: 'UPDATE METRICS',
             onTap: () => context.push(AppRoutes.userMetrics),
           ),
-        ] else if (protocolTitle == 'NO ACTIVE MISSION') ...[
+        ] else if (protocolTitle != 'NO ACTIVE MISSION' && protocolTitle.isNotEmpty) ...[
+          _buildPrompt(
+            context,
+            icon: Icons.shield_outlined,
+            title: 'DEPLOYMENT PENDING',
+            subtitle: 'MISSION: $protocolTitle\nSTATUS: AWAITING AUTHORIZATION',
+            buttonLabel: 'FINALIZE DEPLOYMENT',
+            onTap: onDeploy,
+            secondaryButtonLabel: 'EXPLORE OTHER CHALLENGES',
+            onSecondaryTap: () => StatefulNavigationShell.of(context).goBranch(1),
+          ),
+        ] else ...[
           _buildPrompt(
             context,
             icon: Icons.military_tech_outlined,
-            title: 'NO ACTIVE MISSION',
-            subtitle: 'Deploy to a standard workout protocol to begin training.',
-            buttonLabel: 'DEPLOY TO MISSION',
+            title: 'MISSION DEPLOYMENT REQUIRED',
+            subtitle: 'Finalize your enrollment to activate your workout protocol.',
+            buttonLabel: 'EXPLORE CHALLENGES',
             onTap: onDeploy,
           ),
         ],
@@ -62,6 +73,8 @@ class PreMissionSection extends StatelessWidget {
     required String subtitle,
     required String buttonLabel,
     required VoidCallback onTap,
+    String? secondaryButtonLabel,
+    VoidCallback? onSecondaryTap,
   }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
@@ -95,7 +108,8 @@ class PreMissionSection extends StatelessWidget {
             style: GoogleFonts.rajdhani(
               fontSize: 14,
               color: AppColors.textSecondary,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1,
             ),
           ),
           const SizedBox(height: 24),
@@ -121,6 +135,33 @@ class PreMissionSection extends StatelessWidget {
               ),
             ),
           ),
+          if (secondaryButtonLabel != null && onSecondaryTap != null) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: TacticalButton(
+                onTap: onSecondaryTap,
+                soundType: TacticalSoundType.nav,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: AppColors.outline),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    secondaryButtonLabel,
+                    style: GoogleFonts.orbitron(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textSecondary,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

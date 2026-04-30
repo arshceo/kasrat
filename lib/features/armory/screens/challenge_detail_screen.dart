@@ -134,29 +134,36 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> with Widg
   Future<void> _initiatePayment() async {
     HapticFeedback.heavyImpact();
     
-    // Reset payment status for new deployment session
     final user = Supabase.instance.client.auth.currentUser;
-    String userName = 'RECRUIT';
-
     if (user != null) {
-      // Get user name for terminal display
-      final profile = await Supabase.instance.client
-          .from('profiles')
-          .select('full_name')
-          .eq('id', user.id)
-          .maybeSingle();
-      
-      if (profile != null) {
-        userName = profile['full_name'] ?? 'RECRUIT';
-      }
+      // Serialize protocol for persistence so dashboard can show it while pending
+      final protocolData = {
+        'id': widget.protocol.id,
+        'title': widget.protocol.title,
+        'durationDays': widget.protocol.durationDays,
+        'difficulty': widget.protocol.difficulty,
+        'bgIconCode': widget.protocol.bgIcon.codePoint,
+        'exerciseFocus': widget.protocol.exerciseFocus,
+        'outcomes': widget.protocol.outcomes,
+        'exercises': widget.protocol.exercises,
+        'instructions': widget.protocol.instructions,
+        'description': widget.protocol.description,
+        'tags': widget.protocol.tags,
+        'imagePath': widget.protocol.imagePath,
+        'isRecommended': widget.protocol.isRecommended,
+      };
 
-      await Supabase.instance.client
-          .from('profiles')
-          .update({'is_paid': false})
-          .eq('id', user.id);
+      try {
+        await Supabase.instance.client.from('profiles').update({
+          'protocol_id': widget.protocol.id,
+          'active_protocol_data': protocolData,
+          'is_paid': false, // Ensure it stays false until verified
+        }).eq('id', user.id);
+      } catch (e) {
+        debugPrint('Error saving pending protocol: $e');
+      }
     }
 
-    // Redirect to Deployment Auth Screen
     if (mounted) {
       context.push(
         AppRoutes.deploymentAuth,
@@ -164,7 +171,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> with Widg
           'protocolId': widget.protocol.id,
           'protocolTitle': widget.protocol.title,
           'durationDays': widget.protocol.durationDays,
-          'userName': userName,
+          'userName': 'RECRUIT', 
         },
       );
     }

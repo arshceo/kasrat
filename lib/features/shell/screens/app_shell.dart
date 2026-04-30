@@ -90,9 +90,7 @@ class _AppShellState extends State<AppShell> {
         decoration: BoxDecoration(
           color: AppColors.background,
           border: Border(
-            top: BorderSide(
-              color: AppColors.outlineVariant.withOpacity(0.15),
-            ),
+            top: BorderSide(color: AppColors.outlineVariant.withOpacity(0.15)),
           ),
         ),
         child: Row(
@@ -110,7 +108,7 @@ class _AppShellState extends State<AppShell> {
               index: 1,
               currentIndex: currentIndex,
               icon: 'armory',
-              label: 'ARMORY',
+              label: 'CHALLENGES',
             ),
             _buildNavItem(
               context,
@@ -159,9 +157,7 @@ class _AppShellState extends State<AppShell> {
             children: [
               Icon(
                 _getIconData(icon),
-                color: isActive
-                    ? Colors.black
-                    : Colors.white.withOpacity(0.6),
+                color: isActive ? Colors.black : Colors.white.withOpacity(0.6),
                 size: 24,
               ),
               const SizedBox(height: 4),

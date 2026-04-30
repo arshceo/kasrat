@@ -43,7 +43,8 @@ export default function UstadTerminal() {
 
   const handleInitialize = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!code.trim()) return;
+    const cleanCode = code.trim().replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    if (!cleanCode) return;
 
     setIsVerifying(true);
     setError("");
@@ -53,7 +54,7 @@ export default function UstadTerminal() {
       const { data, error: fetchError } = await supabase
         .from("terminals")
         .select("*")
-        .eq("code", code.trim().toUpperCase())
+        .eq("code", cleanCode)
         .single();
 
       if (fetchError) {
@@ -96,10 +97,18 @@ export default function UstadTerminal() {
         console.log("Payment Success:", response.razorpay_payment_id);
         
         if (terminalData?.user_id) {
-          // Update profile status
+          // Update profile status with mission enrollment data
           await supabase
             .from("profiles")
-            .update({ is_paid: true })
+            .update({ 
+              is_paid: true,
+              protocol_id: terminalData.protocol_id,
+              protocol_start_date: new Date().toISOString(),
+              active_protocol_data: JSON.stringify({
+                title: terminalData.protocol_title,
+                durationDays: terminalData.duration_days,
+              })
+            })
             .eq("id", terminalData.user_id);
 
           // Update terminal record
@@ -194,7 +203,7 @@ export default function UstadTerminal() {
                     setError("");
                   }}
                   onKeyDown={(e) => e.key === 'Enter' && handleInitialize()}
-                  placeholder="e.g., RC-9482"
+                  placeholder="e.g., BX9482"
                   disabled={isVerifying}
                   className={`w-full bg-transparent border-4 ${error ? 'border-red-600' : 'border-[#FFFAF1]/30'} px-6 py-4 text-3xl md:text-4xl font-brutal uppercase text-center tracking-[0.2em] focus:border-[#FFFAF1] outline-none transition-all placeholder:text-[#FFFAF1]/10 ${isVerifying ? 'opacity-50' : 'opacity-100'}`}
                 />

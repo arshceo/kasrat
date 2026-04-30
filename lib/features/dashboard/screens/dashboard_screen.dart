@@ -73,16 +73,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       body: Stack(
         children: [
           const DashboardBackground(),
-          Positioned(
-            left: 0,
-            top: 0,
-            bottom: 0,
-            child: UrgencySidebar(
-              isCriticalPeriod: state.isCriticalPeriod,
-              timeLeft: state.timeLeft,
-              criticalTimeLeft: state.criticalTimeLeft,
+          if (state.isSubscriber && state.timeLeft > Duration.zero)
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              child: UrgencySidebar(
+                isCriticalPeriod: state.isCriticalPeriod,
+                timeLeft: state.timeLeft,
+                criticalTimeLeft: state.criticalTimeLeft,
+              ),
             ),
-          ),
           SafeArea(
             child: state.isLoading
                 ? const Center(child: CircularProgressIndicator(color: AppColors.neonRed))
@@ -105,7 +106,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                   hasCompletedBaseline: state.hasCompletedBaseline,
                                   hasCompletedMetrics: state.hasCompletedMetrics,
                                   protocolTitle: state.protocolTitle,
-                                  onDeploy: () => context.push(AppRoutes.armory),
+                                  onDeploy: () {
+                                    if (state.activeProtocol != null) {
+                                      context.push(
+                                        AppRoutes.deploymentAuth,
+                                        extra: {
+                                          'protocolId': state.activeProtocol!.id,
+                                          'protocolTitle': state.activeProtocol!.title,
+                                          'durationDays': state.activeProtocol!.durationDays,
+                                          'userName': state.fullName,
+                                        },
+                                      );
+                                    } else {
+                                      StatefulNavigationShell.of(context).goBranch(1);
+                                    }
+                                  },
                                 )
                               else ...[
                                 DirectiveSection(
@@ -129,8 +144,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                     currentDay: state.currentDay,
                                   ),
                               ],
-                              const SizedBox(height: 16),
-                              AssetTelemetryGrid(profileData: state.profileData),
+                              if (state.isSubscriber) ...[
+                                const SizedBox(height: 16),
+                                AssetTelemetryGrid(profileData: state.profileData),
+                              ],
                               /* -- HIDING DIET PLAN FOR NOW --
                               if (state.hasDietPlan && state.dietPlan != null) ...[
                                 DailyRationsCard(
