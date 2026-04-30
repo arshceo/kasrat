@@ -29,6 +29,7 @@ class DashboardState {
   final int? dailyCalories;
   final List<bool> rationsChecked;
   final Map<String, dynamic>? activeWorkoutData;
+  final String? pendingCode;
 
   DashboardState({
     this.profileData,
@@ -52,6 +53,7 @@ class DashboardState {
     this.dailyCalories,
     this.rationsChecked = const [],
     this.activeWorkoutData,
+    this.pendingCode,
   });
 
   DashboardState copyWith({
@@ -76,6 +78,7 @@ class DashboardState {
     int? dailyCalories,
     List<bool>? rationsChecked,
     Map<String, dynamic>? activeWorkoutData,
+    String? pendingCode,
   }) {
     return DashboardState(
       profileData: profileData ?? this.profileData,
@@ -99,6 +102,7 @@ class DashboardState {
       dailyCalories: dailyCalories ?? this.dailyCalories,
       rationsChecked: rationsChecked ?? this.rationsChecked,
       activeWorkoutData: activeWorkoutData ?? this.activeWorkoutData,
+      pendingCode: pendingCode ?? this.pendingCode,
     );
   }
 }
@@ -157,7 +161,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
     }
   }
 
-  void _updateFromProfile(Map<String, dynamic> res) {
+  void _updateFromProfile(Map<String, dynamic> res) async {
     final hasBaseline =
         (res['baseline_squats'] ?? 0) > 0 && (res['baseline_pushups'] ?? 0) > 0;
 
@@ -223,6 +227,18 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
       }
     }
 
+    String? pendingCode;
+    if (res['is_paid'] != true && protocolId != null) {
+      final terminalRes = await Supabase.instance.client
+          .from('terminals')
+          .select('code')
+          .eq('id', res['id'])
+          .maybeSingle();
+      if (terminalRes != null) {
+        pendingCode = terminalRes['code'] as String?;
+      }
+    }
+
     state = state.copyWith(
       profileData: res,
       rank: rank,
@@ -237,6 +253,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
       hasCompletedMetrics:
           (res['height_cm'] ?? 0) > 0 && (res['weight_kg'] ?? 0) > 0,
       activeWorkoutData: activeWorkoutData,
+      pendingCode: pendingCode,
       isLoading: false,
     );
   }

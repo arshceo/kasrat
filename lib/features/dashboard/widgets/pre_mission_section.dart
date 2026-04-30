@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
-import 'package:kasrat_ai/core/constants/app_constants.dart';
 import 'package:kasrat_ai/core/widgets/tactical_button.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/services.dart';
 
 class PreMissionSection extends StatelessWidget {
   final bool hasCompletedBaseline;
   final bool hasCompletedMetrics;
   final String protocolTitle;
+  final String? pendingCode;
   final VoidCallback onDeploy;
 
   const PreMissionSection({
@@ -16,6 +18,7 @@ class PreMissionSection extends StatelessWidget {
     required this.hasCompletedMetrics,
     required this.protocolTitle,
     required this.onDeploy,
+    this.pendingCode,
   });
 
   @override
@@ -47,8 +50,18 @@ class PreMissionSection extends StatelessWidget {
             icon: Icons.shield_outlined,
             title: 'DEPLOYMENT PENDING',
             subtitle: 'MISSION: $protocolTitle\nSTATUS: AWAITING AUTHORIZATION',
-            buttonLabel: 'FINALIZE DEPLOYMENT',
-            onTap: onDeploy,
+            buttonLabel: pendingCode != null ? 'GO TO WEBSITE' : 'FINALIZE DEPLOYMENT',
+            onTap: () async {
+              if (pendingCode != null) {
+                final url = Uri.parse('https://ustad.ai');
+                if (await canLaunchUrl(url)) {
+                  await launchUrl(url, mode: LaunchMode.externalApplication);
+                }
+              } else {
+                onDeploy();
+              }
+            },
+            pendingCode: pendingCode,
             secondaryButtonLabel: 'EXPLORE OTHER CHALLENGES',
             onSecondaryTap: () => StatefulNavigationShell.of(context).goBranch(1),
           ),
@@ -73,6 +86,7 @@ class PreMissionSection extends StatelessWidget {
     required String subtitle,
     required String buttonLabel,
     required VoidCallback onTap,
+    String? pendingCode,
     String? secondaryButtonLabel,
     VoidCallback? onSecondaryTap,
   }) {
@@ -112,6 +126,49 @@ class PreMissionSection extends StatelessWidget {
               letterSpacing: 1,
             ),
           ),
+          if (pendingCode != null) ...[
+            const SizedBox(height: 16),
+            GestureDetector(
+              onTap: () {
+                Clipboard.setData(ClipboardData(text: pendingCode));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('CODE COPIED TO CLIPBOARD')),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                  border: Border.all(color: AppColors.neonRed.withValues(alpha: 0.5)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      pendingCode,
+                      style: GoogleFonts.spaceMono(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.neonRed,
+                        letterSpacing: 4,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Icon(Icons.copy, size: 18, color: AppColors.neonRed),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'TAP TO COPY AUTH CODE',
+              style: GoogleFonts.spaceMono(
+                fontSize: 9,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textMuted,
+              ),
+            ),
+          ],
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,

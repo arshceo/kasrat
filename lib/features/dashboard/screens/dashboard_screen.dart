@@ -106,6 +106,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                   hasCompletedBaseline: state.hasCompletedBaseline,
                                   hasCompletedMetrics: state.hasCompletedMetrics,
                                   protocolTitle: state.protocolTitle,
+                                  pendingCode: state.pendingCode,
                                   onDeploy: () {
                                     if (state.activeProtocol != null) {
                                       context.push(
