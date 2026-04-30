@@ -1,23 +1,29 @@
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Auth service — handles Google Sign-In via Supabase.
 class AuthService {
   static final _supabase = Supabase.instance.client;
 
+  static const String _webClientId =
+      '378148668409-38lfvcjb4b350lm01c4p2v9s5acfqsvp.apps.googleusercontent.com';
+
+  static final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: const ['email', 'profile', 'openid'],
+    serverClientId: _webClientId,
+  );
+
   /// Sign in with Google using Supabase native Google auth.
   static Future<AuthResponse> signInWithGoogle() async {
-    const String webClientId =
-        '378148668409-38lfvcjb4b350lm01c4p2v9s5acfqsvp.apps.googleusercontent.com';
-
-    final GoogleSignIn googleSignIn = GoogleSignIn(
-      scopes: const ['email', 'profile', 'openid'],
-      serverClientId: webClientId,
-    );
-
     try {
-      final googleUser = await googleSignIn.signIn();
+      // Clear any existing Google sign-in local state to force selection
+      if (await _googleSignIn.isSignedIn()) {
+        await _googleSignIn.signOut();
+      }
+
+      final googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
         throw Exception('Google Sign-In was cancelled');
       }
@@ -51,7 +57,13 @@ class AuthService {
 
   /// Sign out
   static Future<void> signOut() async {
-    await GoogleSignIn().signOut();
+    try {
+      // Disconnect clears the current account selection entirely
+      await _googleSignIn.signOut();
+      await _googleSignIn.disconnect();
+    } catch (e) {
+      // Ignore if already disconnected
+    }
     await _supabase.auth.signOut();
   }
 
@@ -84,14 +96,35 @@ class AuthService {
 
     final updates = <String, dynamic>{};
     if (language != null) updates['language'] = language;
-    if (commanderPersona != null)
+    if (commanderPersona != null) {
       updates['commander_persona'] = commanderPersona;
+    }
     if (tier != null) updates['tier'] = tier;
-    if (collateralAmount != null)
+    if (collateralAmount != null) {
       updates['collateral_amount'] = collateralAmount;
+    }
 
     if (updates.isNotEmpty) {
       await _supabase.from('profiles').update(updates).eq('id', user.id);
+    }
+  }
+
+  /// Check if the user has completed onboarding
+  static Future<bool> isOnboardingComplete() async {
+    final user = getCurrentUser();
+    if (user == null) return false;
+
+    try {
+      final res = await _supabase
+          .from('profiles')
+          .select('onboarding_complete')
+          .eq('id', user.id)
+          .maybeSingle();
+
+      return res != null && res['onboarding_complete'] == true;
+    } catch (e) {
+      debugPrint('Error checking onboarding status: $e');
+      return false;
     }
   }
 

@@ -42,10 +42,7 @@ class UstadTheme {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(4),
-          side: const BorderSide(
-            color: AppColors.redGlow,
-            width: 1,
-          ),
+          side: const BorderSide(color: AppColors.redGlow, width: 1),
         ),
       ),
       // Elevated Button (primary CTA)
@@ -54,9 +51,7 @@ class UstadTheme {
           backgroundColor: AppColors.neonRed,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(4),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
           textStyle: _bodyOps.copyWith(
             fontSize: 16,
             fontWeight: FontWeight.w700,
@@ -71,9 +66,7 @@ class UstadTheme {
           foregroundColor: AppColors.neonRed,
           side: const BorderSide(color: AppColors.neonRed, width: 2),
           padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(4),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
           textStyle: _bodyOps.copyWith(
             fontSize: 14,
             fontWeight: FontWeight.w600,
@@ -90,20 +83,35 @@ class UstadTheme {
         headlineMedium: _headlineBrutal.copyWith(fontSize: 20),
         headlineSmall: _headlineBrutal.copyWith(fontSize: 18),
         titleLarge: _bodyOps.copyWith(
-            fontSize: 18, fontWeight: FontWeight.w700),
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+        ),
         titleMedium: _bodyOps.copyWith(
-            fontSize: 16, fontWeight: FontWeight.w600),
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+        ),
         titleSmall: _bodyOps.copyWith(
-            fontSize: 14, fontWeight: FontWeight.w600),
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
         bodyLarge: _bodyOps.copyWith(fontSize: 16),
         bodyMedium: _bodyOps.copyWith(fontSize: 14),
         bodySmall: _bodyOps.copyWith(fontSize: 12),
         labelLarge: _bodyOps.copyWith(
-            fontSize: 14, fontWeight: FontWeight.w700, letterSpacing: 2),
+          fontSize: 14,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 2,
+        ),
         labelMedium: _bodyOps.copyWith(
-            fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1.5),
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 1.5,
+        ),
         labelSmall: _bodyOps.copyWith(
-            fontSize: 10, fontWeight: FontWeight.w500, letterSpacing: 1),
+          fontSize: 10,
+          fontWeight: FontWeight.w500,
+          letterSpacing: 1,
+        ),
       ),
       // Divider
       dividerTheme: const DividerThemeData(
@@ -111,10 +119,7 @@ class UstadTheme {
         thickness: 0.5,
       ),
       // Icon
-      iconTheme: const IconThemeData(
-        color: AppColors.neonRed,
-        size: 24,
-      ),
+      iconTheme: const IconThemeData(color: AppColors.neonRed, size: 24),
       useMaterial3: true,
     );
   }
@@ -123,61 +128,61 @@ class UstadTheme {
 
   /// Massive brutalist headline — Rajdhani Bold
   static TextStyle get _headlineBrutal => GoogleFonts.rajdhani(
-        color: AppColors.textPrimary,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 4,
-        height: 1.1,
-      );
+    color: AppColors.textPrimary,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 4,
+    height: 1.1,
+  );
 
   /// Tech-ops body text — Orbitron
   static TextStyle get _bodyOps => GoogleFonts.orbitron(
-        color: AppColors.textPrimary,
-        fontWeight: FontWeight.w400,
-        letterSpacing: 1,
-        height: 1.4,
-      );
+    color: AppColors.textPrimary,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 1,
+    height: 1.4,
+  );
 
   // ── Exported Custom Styles ───────────────────────────────────────────
 
   /// The massive rep counter (120pt neon red)
   static TextStyle get counterMassive => GoogleFonts.rajdhani(
-        color: AppColors.neonRed,
-        fontSize: 120,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 2,
-        height: 1.0,
-      );
+    color: AppColors.neonRed,
+    fontSize: 120,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 2,
+    height: 1.0,
+  );
 
   /// Timer display
   static TextStyle get timerDisplay => GoogleFonts.orbitron(
-        color: AppColors.textPrimary,
-        fontSize: 48,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 4,
-      );
+    color: AppColors.textPrimary,
+    fontSize: 48,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 4,
+  );
 
   /// Status label (e.g. "UNBROKEN")
   static TextStyle get statusLabel => GoogleFonts.orbitron(
-        color: AppColors.success,
-        fontSize: 14,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 3,
-      );
+    color: AppColors.success,
+    fontSize: 14,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 3,
+  );
 
   /// Directive text (e.g. "DAY 14: 20 PUSHUPS")
   static TextStyle get directiveText => GoogleFonts.rajdhani(
-        color: AppColors.textPrimary,
-        fontSize: 32,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 2,
-        height: 1.2,
-      );
+    color: AppColors.textPrimary,
+    fontSize: 32,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 2,
+    height: 1.2,
+  );
 
   /// Section header (smaller brutal)
   static TextStyle get sectionHeader => GoogleFonts.rajdhani(
-        color: AppColors.neonRed,
-        fontSize: 14,
-        fontWeight: FontWeight.w600,
-        letterSpacing: 4,
-      );
+    color: AppColors.neonRed,
+    fontSize: 14,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 4,
+  );
 }

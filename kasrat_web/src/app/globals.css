@@ -12,8 +12,18 @@
   --color-success: #00ff41;
   --color-danger: #ff3333;
 
-  --font-body: "Rajdhani", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-brutal: "Oswald", sans-serif;
   --font-mono: "Orbitron", monospace;
+  --color-brand-beige: #FFFAF1;
+}
+
+@layer utilities {
+  .bg-grain {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    opacity: 0.04;
+    pointer-events: none;
+  }
 }
 
 @layer base {
@@ -65,6 +75,16 @@
 
 .pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Pulse animation for background */
+@keyframes pulse-slow {
+  0%, 100% { transform: scale(1.05); }
+  50% { transform: scale(1.1); }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 20s ease-in-out infinite alternate;
 }
 
 /* Grid background */

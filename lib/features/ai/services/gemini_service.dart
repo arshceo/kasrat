@@ -15,10 +15,26 @@ class GeminiService {
     );
 
     if (response.status != 200) {
-      throw Exception('Workout plan generation failed: ${response.data}');
+      throw Exception('Workout plan generation failed: \${response.data}');
     }
 
-    return response.data as Map<String, dynamic>;
+    final data = response.data as Map<String, dynamic>;
+    
+    // Filter out removed exercises if present in the plan
+    if (data['plan'] != null && data['plan'] is Map) {
+      final plan = data['plan'] as Map;
+      plan.forEach((day, dayData) {
+        if (dayData is Map && dayData['exercises'] is List) {
+          final exercises = dayData['exercises'] as List;
+          exercises.removeWhere((ex) {
+            final name = ex.toString().toUpperCase();
+            return name.contains('BURPEE') || name.contains('JUMP SQUAT') || name.contains('JUMP_SQUAT');
+          });
+        }
+      });
+    }
+
+    return data;
   }
 
   /// Generate a localized diet plan via Gemini.
@@ -33,7 +49,7 @@ class GeminiService {
     );
 
     if (response.status != 200) {
-      throw Exception('Diet plan generation failed: ${response.data}');
+      throw Exception('Diet plan generation failed: \${response.data}');
     }
 
     return response.data as Map<String, dynamic>;
@@ -64,6 +80,8 @@ class GeminiService {
         .select()
         .eq('user_id', user.id)
         .eq('is_active', true)
+        .order('generated_at', ascending: false)
+        .limit(1)
         .maybeSingle();
 
     return response;
@@ -107,7 +125,6 @@ class GeminiService {
         .eq('id', user.id);
   }
 
-  /// Get workout history
   static Future<List<Map<String, dynamic>>> getWorkoutHistory() async {
     final user = _supabase.auth.currentUser;
     if (user == null) return [];
@@ -119,6 +136,28 @@ class GeminiService {
         .order('day_number', ascending: false);
 
     return List<Map<String, dynamic>>.from(response);
+  }
+
+  /// Get mission history from profiles (structured session logs)
+  static Future<List<Map<String, dynamic>>> getMissionHistory() async {
+    final user = _supabase.auth.currentUser;
+    if (user == null) return [];
+
+    final response = await _supabase
+        .from('profiles')
+        .select('workout_logs')
+        .eq('id', user.id)
+        .single();
+
+    final logs = (response['workout_logs'] as List<dynamic>?) ?? [];
+    // Convert to list of maps and sort by date descending
+    final list = logs.map((l) => l as Map<String, dynamic>).toList();
+    list.sort((a, b) {
+       final da = DateTime.tryParse(a['date'] ?? '') ?? DateTime(2000);
+       final db = DateTime.tryParse(b['date'] ?? '') ?? DateTime(2000);
+       return db.compareTo(da);
+    });
+    return list;
   }
 
   /// Get all-time best completed reps for one exercise.
@@ -141,6 +180,33 @@ class GeminiService {
     return records.first['completed_reps'] as int?;
   }
 
+  /// Get aggregated bests for each duration of a specific exercise
+  static Future<Map<int, int>> getExerciseRecords({
+    required String exerciseType,
+  }) async {
+    final user = _supabase.auth.currentUser;
+    if (user == null) return {};
+
+    final response = await _supabase
+        .from('daily_logs')
+        .select('completed_reps, duration_seconds')
+        .eq('user_id', user.id)
+        .eq('exercise_type', exerciseType);
+
+    final logs = List<Map<String, dynamic>>.from(response);
+    final bests = <int, int>{};
+
+    for (final log in logs) {
+      final duration = log['duration_seconds'] as int? ?? 0;
+      final reps = log['completed_reps'] as int? ?? 0;
+      if (!bests.containsKey(duration) || reps > bests[duration]!) {
+        bests[duration] = reps;
+      }
+    }
+
+    return bests;
+  }
+
   /// Log a drill attempt without changing day/streak progression.
   static Future<void> logCalibrationDrill({
     required String exerciseType,
@@ -150,6 +216,7 @@ class GeminiService {
     final user = _supabase.auth.currentUser;
     if (user == null) return;
 
+    // 1. Log to history
     await _supabase.from('daily_logs').insert({
       'user_id': user.id,
       'day_number': 0,
@@ -162,5 +229,42 @@ class GeminiService {
       'completed_at': DateTime.now().toIso8601String(),
       'status': 'completed',
     });
+
+    // 2. Update Profile High Scores (Max Reps)
+    final profile = await _supabase
+        .from('profiles')
+        .select()
+        .eq('id', user.id)
+        .single();
+
+    String colName = 'max_pushups';
+    if (exerciseType.toLowerCase().contains('squat')) colName = 'max_squats';
+    if (exerciseType.toLowerCase().contains('situp')) colName = 'max_situps';
+
+    final int currentMax = (profile[colName] as int?) ?? 0;
+    if (completedReps > currentMax) {
+      await _supabase
+          .from('profiles')
+          .update({colName: completedReps})
+          .eq('id', user.id);
+    }
+  }
+
+  static Future<String> evaluateExcuse(String excuse) async {
+    try {
+      final response = await _supabase.functions.invoke(
+        'evaluate-excuse',
+        body: {'excuse': excuse},
+      );
+
+      if (response.status != 200) {
+        return "DRILL INSTRUCTOR IS BUSY. GET MOVING!";
+      }
+
+      final data = response.data as Map<String, dynamic>;
+      return data['response'] ?? "ZERO EXCUSES ALLOWED!";
+    } catch (e) {
+      return "COMMS SILENT. START RUNNING!";
+    }
   }
 }

@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 
 declare global {
   interface Window {
-    Razorpay: new (options: RazorpayOptions) => RazorpayInstance;
+    Razorpay: any;
   }
 }
 

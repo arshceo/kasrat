@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../core/constants/app_constants.dart';
+import 'package:kasrat_ai/core/constants/app_constants.dart';
 import '../../auth/services/auth_service.dart';
 
 /// Screen B-03: VAULT — Escrow status, 28-day streak grid, financial accountability.
@@ -47,7 +47,11 @@ class _VaultScreenState extends State<VaultScreen> {
                 _buildHeader(),
                 Expanded(
                   child: _isLoading
-                      ? const Center(child: CircularProgressIndicator(color: AppColors.neonRed))
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.neonRed,
+                          ),
+                        )
                       : SingleChildScrollView(
                           padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
                           child: Column(
@@ -73,9 +77,7 @@ class _VaultScreenState extends State<VaultScreen> {
   }
 
   Widget _buildGridBackground() {
-    return Positioned.fill(
-      child: CustomPaint(painter: _GridPainter()),
-    );
+    return Positioned.fill(child: CustomPaint(painter: _GridPainter()));
   }
 
   Widget _buildHeader() {
@@ -87,7 +89,11 @@ class _VaultScreenState extends State<VaultScreen> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.account_balance_wallet_outlined, color: AppColors.neonRed, size: 18),
+          const Icon(
+            Icons.account_balance_wallet_outlined,
+            color: AppColors.neonRed,
+            size: 18,
+          ),
           const SizedBox(width: 10),
           Text(
             'VAULT / ESCROW',
@@ -125,7 +131,12 @@ class _VaultScreenState extends State<VaultScreen> {
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
         color: AppColors.surfaceContainerHighest,
-        border: Border(left: BorderSide(color: isUnbroken ? AppColors.neonRed : AppColors.danger, width: 6)),
+        border: Border(
+          left: BorderSide(
+            color: isUnbroken ? AppColors.neonRed : AppColors.danger,
+            width: 6,
+          ),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -214,7 +225,10 @@ class _VaultScreenState extends State<VaultScreen> {
           itemCount: 28,
           itemBuilder: (context, index) {
             final day = index + 1;
-            final isCompleted = day < currentDay;
+            // Mocking day 3 as the failed state if we are past it
+            final isFailed = day == 3 && currentDay > 3;
+            // A day is successfully completed if it's past and not a failed day
+            final isCompleted = day < currentDay && !isFailed;
             final isCurrent = day == currentDay;
             final isFuture = day > currentDay;
 
@@ -222,7 +236,11 @@ class _VaultScreenState extends State<VaultScreen> {
             Color textColor;
             Color borderColor;
 
-            if (isCompleted) {
+            if (isFailed) {
+              bgColor = AppColors.danger.withValues(alpha: 0.15);
+              textColor = AppColors.danger;
+              borderColor = AppColors.danger;
+            } else if (isCompleted) {
               bgColor = AppColors.neonRed.withValues(alpha: 0.15);
               textColor = AppColors.neonRed;
               borderColor = AppColors.neonRed.withValues(alpha: 0.4);
@@ -245,18 +263,37 @@ class _VaultScreenState extends State<VaultScreen> {
               child: isFuture
                   ? Text(
                       '$day',
-                      style: GoogleFonts.orbitron(fontSize: 9, color: textColor),
+                      style: GoogleFonts.orbitron(
+                        fontSize: 9,
+                        color: textColor,
+                      ),
+                    )
+                  : isFailed
+                  ? Text(
+                      'M.I.A.',
+                      style: GoogleFonts.orbitron(
+                        fontSize: 7,
+                        color: textColor,
+                        fontWeight: FontWeight.w900,
+                      ),
                     )
                   : isCompleted
-                      ? Icon(Icons.check, color: textColor, size: 12)
-                      : Text(
-                          '$day',
-                          style: GoogleFonts.orbitron(
-                            fontSize: 9,
-                            color: textColor,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
+                  ? Text(
+                      'CLR',
+                      style: GoogleFonts.orbitron(
+                        fontSize: 9,
+                        color: textColor,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    )
+                  : Text(
+                      '$day',
+                      style: GoogleFonts.orbitron(
+                        fontSize: 9,
+                        color: textColor,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
             );
           },
         ),
@@ -264,6 +301,8 @@ class _VaultScreenState extends State<VaultScreen> {
         Row(
           children: [
             _legendItem(AppColors.neonRed, 'COMPLETE'),
+            const SizedBox(width: 16),
+            _legendItem(AppColors.danger, 'FAILED'),
             const SizedBox(width: 16),
             _legendItem(AppColors.textMuted, 'UPCOMING'),
           ],
@@ -277,7 +316,14 @@ class _VaultScreenState extends State<VaultScreen> {
       children: [
         Container(width: 8, height: 8, color: color),
         const SizedBox(width: 4),
-        Text(label, style: GoogleFonts.orbitron(fontSize: 8, color: AppColors.textMuted, letterSpacing: 1)),
+        Text(
+          label,
+          style: GoogleFonts.orbitron(
+            fontSize: 8,
+            color: AppColors.textMuted,
+            letterSpacing: 1,
+          ),
+        ),
       ],
     );
   }
@@ -294,11 +340,31 @@ class _VaultScreenState extends State<VaultScreen> {
         children: [
           _sectionLabel('// ESCROW PROTOCOL'),
           const SizedBox(height: 16),
-          _ruleRow(Icons.check_circle_outline, '28 DAYS COMPLETED → FULL COLLATERAL REFUND', AppColors.neonRed),
-          _ruleRow(Icons.cancel_outlined, 'MISSED ALARM → COLLATERAL FORFEIT', AppColors.danger),
-          _ruleRow(Icons.account_balance_outlined, 'COLLATERAL HELD VIA RAZORPAY UPI', AppColors.textSecondary),
-          _ruleRow(Icons.schedule_outlined, 'REFUND PROCESSED WITHIN 48 HOURS', AppColors.textSecondary),
-          _ruleRow(Icons.privacy_tip_outlined, 'NO PARTIAL REFUNDS. NO EXCEPTIONS.', AppColors.textMuted),
+          _ruleRow(
+            Icons.check_circle_outline,
+            '28 DAYS COMPLETED → FULL COLLATERAL REFUND',
+            AppColors.neonRed,
+          ),
+          _ruleRow(
+            Icons.cancel_outlined,
+            'MISSED ALARM → COLLATERAL FORFEIT',
+            AppColors.danger,
+          ),
+          _ruleRow(
+            Icons.account_balance_outlined,
+            'COLLATERAL HELD VIA RAZORPAY UPI',
+            AppColors.textSecondary,
+          ),
+          _ruleRow(
+            Icons.schedule_outlined,
+            'REFUND PROCESSED WITHIN 48 HOURS',
+            AppColors.textSecondary,
+          ),
+          _ruleRow(
+            Icons.privacy_tip_outlined,
+            'NO PARTIAL REFUNDS. NO EXCEPTIONS.',
+            AppColors.textMuted,
+          ),
         ],
       ),
     );
@@ -355,11 +421,19 @@ class _VaultScreenState extends State<VaultScreen> {
             children: [
               Text(
                 'DAY $currentDay / 28',
-                style: GoogleFonts.orbitron(fontSize: 10, color: AppColors.neonRed, letterSpacing: 2),
+                style: GoogleFonts.orbitron(
+                  fontSize: 10,
+                  color: AppColors.neonRed,
+                  letterSpacing: 2,
+                ),
               ),
               Text(
                 '${(progress * 100).toInt()}% COMPLETE',
-                style: GoogleFonts.orbitron(fontSize: 10, color: AppColors.textMuted, letterSpacing: 2),
+                style: GoogleFonts.orbitron(
+                  fontSize: 10,
+                  color: AppColors.textMuted,
+                  letterSpacing: 2,
+                ),
               ),
             ],
           ),

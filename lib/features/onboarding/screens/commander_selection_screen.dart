@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../core/constants/app_constants.dart';
+import 'package:kasrat_ai/core/constants/app_constants.dart';
 import '../../auth/services/auth_service.dart';
 
 /// W-01: Commander Selection — pick your Ustad persona.
@@ -52,7 +52,7 @@ class _CommanderSelectionScreenState extends State<CommanderSelectionScreen> {
   Future<void> _proceed() async {
     if (_selectedCommander == null) return;
     await AuthService.updateProfile(commanderPersona: _selectedCommander!);
-    if (mounted) context.go(AppRoutes.calibrationSetup);
+    if (mounted) context.go(AppRoutes.baselineTest);
   }
 
   @override

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_tts/flutter_tts.dart';
-import '../../../core/constants/app_constants.dart';
+import 'package:kasrat_ai/core/constants/app_constants.dart';
 import '../../auth/services/auth_service.dart';
 
 /// W-00: Audio Protocol — Language Selection.

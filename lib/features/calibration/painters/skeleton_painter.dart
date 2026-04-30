@@ -2,8 +2,9 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_pose_detection/google_mlkit_pose_detection.dart';
-import '../../../core/constants/app_constants.dart';
+import 'package:kasrat_ai/core/constants/app_constants.dart';
 import '../services/pose_analyzer.dart';
+import '../services/pose_math.dart';
 
 /// Custom painter for drawing ML Kit skeletal overlay on the camera feed.
 class SkeletonPainter extends CustomPainter {
@@ -104,8 +105,9 @@ class SkeletonPainter extends CustomPainter {
     for (final landmarkType in essentialLandmarks) {
       final landmark = pose!.landmarks[landmarkType];
       if (landmark == null ||
-          landmark.likelihood < ExerciseConstants.confidenceThreshold)
+          landmark.likelihood < ExerciseConstants.confidenceThreshold) {
         continue;
+      }
 
       final point = _transformPoint(landmark, size);
 
@@ -164,7 +166,7 @@ class SkeletonPainter extends CustomPainter {
     if (hip == null || knee == null || ankle == null) return;
 
     final kneePoint = _transformPoint(knee, size);
-    final angle = PoseAnalyzer.calculateAngle(hip, knee, ankle);
+    final angle = PoseMath.calculateJointAngle(hip, knee, ankle);
 
     // Draw angle text
     final textSpan = TextSpan(

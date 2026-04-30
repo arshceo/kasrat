@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
-import { Rajdhani, Orbitron } from "next/font/google";
+import { Inter, Oswald, Orbitron } from "next/font/google";
 import "./globals.css";
 
-const rajdhani = Rajdhani({
+const inter = Inter({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
   variable: "--font-body",
+});
+
+const oswald = Oswald({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  variable: "--font-brutal",
 });
 
 const orbitron = Orbitron({
@@ -15,7 +20,7 @@ const orbitron = Orbitron({
 });
 
 export const metadata: Metadata = {
-  title: "USTAD AI — Discipline as a Service | ₹149/mo",
+  title: "USTAD AI — Discipline as a Service",
   description:
     "Your body is soft. The Ustad will fix that. 28-day AI-enforced calisthenics protocol with real collateral. No gym required.",
   keywords: [
@@ -28,8 +33,8 @@ export const metadata: Metadata = {
     "kasrat",
   ],
   openGraph: {
-    title: "USTAD AI — Your Body is Soft. We Are The Ransom Demand.",
-    description: "₹149/mo. 28 days. AI tracks every squat. Deposit collateral. No excuses.",
+    title: "USTAD AI — Discipline as a Service",
+    description: "28 days. AI tracks every squat. Deposit collateral. No excuses.",
     type: "website",
   },
 };
@@ -38,8 +43,8 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${rajdhani.variable} ${orbitron.variable}`}>
-      <body className="scanlines">{children}</body>
+    <html lang="en" className={`${inter.variable} ${oswald.variable} ${orbitron.variable}`} suppressHydrationWarning>
+      <body className="scanlines" suppressHydrationWarning>{children}</body>
     </html>
   );
 }

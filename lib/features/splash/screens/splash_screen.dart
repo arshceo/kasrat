@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/constants/app_constants.dart';
-import '../../../core/theme/ustad_theme.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:kasrat_ai/core/constants/app_constants.dart';
+import 'package:kasrat_ai/core/theme/ustad_theme.dart';
+import 'package:kasrat_ai/core/widgets/curved_text.dart';
 
 /// Boot splash — glitch effect, then route to login.
 class SplashScreen extends StatefulWidget {
@@ -33,18 +35,19 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
 
-    _glitchOffset = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 0, end: 8), weight: 1),
-      TweenSequenceItem(tween: Tween(begin: 8, end: -6), weight: 1),
-      TweenSequenceItem(tween: Tween(begin: -6, end: 4), weight: 1),
-      TweenSequenceItem(tween: Tween(begin: 4, end: -2), weight: 1),
-      TweenSequenceItem(tween: Tween(begin: -2, end: 0), weight: 1),
-    ]).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.4, 0.7, curve: Curves.easeInOut),
-      ),
-    );
+    _glitchOffset =
+        TweenSequence<double>([
+          TweenSequenceItem(tween: Tween(begin: 0, end: 8), weight: 1),
+          TweenSequenceItem(tween: Tween(begin: 8, end: -6), weight: 1),
+          TweenSequenceItem(tween: Tween(begin: -6, end: 4), weight: 1),
+          TweenSequenceItem(tween: Tween(begin: 4, end: -2), weight: 1),
+          TweenSequenceItem(tween: Tween(begin: -2, end: 0), weight: 1),
+        ]).animate(
+          CurvedAnimation(
+            parent: _controller,
+            curve: const Interval(0.4, 0.7, curve: Curves.easeInOut),
+          ),
+        );
 
     _controller.forward();
 
@@ -77,31 +80,40 @@ class _SplashScreenState extends State<SplashScreen>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Red dot indicator
-                    Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: AppColors.neonRed,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.neonRed.withValues(alpha: 0.6),
-                            blurRadius: 20,
-                            spreadRadius: 4,
+                    // App Logo
+                    Stack(
+                      alignment: Alignment.center,
+                      clipBehavior: Clip.none,
+                      children: [
+                        Image.asset(
+                          AppAssets.logoMain,
+                          height: 120,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) => Text(
+                            AppStrings.appName,
+                            style: UstadTheme.counterMassive.copyWith(
+                              fontSize: 48,
+                              letterSpacing: 12,
+                            ),
                           ),
-                        ],
-                      ),
+                        ),
+                        Positioned(
+                          top: -30,
+                          child: CurvedText(
+                            text: 'USTAD AI',
+                            radius: 100,
+                            startAngle: 0.0,
+                            textStyle: GoogleFonts.orbitron(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                              letterSpacing: 4,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 24),
-                    // App title
-                    Text(
-                      AppStrings.appName,
-                      style: UstadTheme.counterMassive.copyWith(
-                        fontSize: 48,
-                        letterSpacing: 12,
-                      ),
-                    ),
                     const SizedBox(height: 8),
                     Text(
                       AppStrings.tagline,

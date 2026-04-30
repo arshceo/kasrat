@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../core/constants/app_constants.dart';
-import '../../../features/calibration/services/pose_analyzer.dart';
+import 'package:kasrat_ai/core/constants/app_constants.dart';
+import 'package:kasrat_ai/core/widgets/tactical_button.dart';
+import 'package:kasrat_ai/core/audio/fauj_audio_engine.dart';
 
-/// Screen A-01b: Pre-flight calibration setup.
-/// User selects exercise type and timer duration.
+import '../services/exercise_type.dart';
+import '../../auth/services/auth_service.dart';
+import '../../ai/services/gemini_service.dart';
+
 class CalibrationSetupScreen extends StatefulWidget {
   const CalibrationSetupScreen({super.key});
 
@@ -16,13 +19,146 @@ class CalibrationSetupScreen extends StatefulWidget {
 class _CalibrationSetupScreenState extends State<CalibrationSetupScreen> {
   ExerciseType _selectedExercise = ExerciseType.squat;
   int _selectedDuration = 60; // seconds
+  Map<String, dynamic>? _profile;
+  Map<ExerciseType, Map<int, int>> _allExerciseRecords = {};
+  bool _isFetchingRecords = false;
 
-  final List<int> _durations = [30, 60, 90, 120];
+  String _toDbName(ExerciseType type) {
+    return type.dbType;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    try {
+      final profile = await AuthService.getProfile();
+      if (mounted) {
+        setState(() {
+          _profile = profile;
+        });
+      }
+      _fetchExerciseRecords();
+    } catch (_) {
+      // Profile load failed, but we can still try to fetch records
+    }
+  }
+
+  Future<void> _fetchExerciseRecords() async {
+    if (_isFetchingRecords) return;
+    setState(() => _isFetchingRecords = true);
+
+    try {
+      final Map<ExerciseType, Map<int, int>> records = {};
+      for (final type in ExerciseType.values) {
+        final data = await GeminiService.getExerciseRecords(
+          exerciseType: _toDbName(type),
+        );
+        records[type] = data;
+      }
+
+      if (mounted) {
+        setState(() {
+          _allExerciseRecords = records;
+          _isFetchingRecords = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching records: $e');
+      if (mounted) setState(() => _isFetchingRecords = false);
+    }
+  }
+
+  void _showCustomDurationDialog() {
+    final minController = TextEditingController();
+    final secController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: Text(
+          'SET CUSTOM DURATION',
+          style: GoogleFonts.orbitron(
+            color: AppColors.textPrimary,
+            fontSize: 14,
+          ),
+        ),
+        content: Row(
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: minController,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  hintText: 'MIN',
+                  hintStyle: TextStyle(color: Colors.white24),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white24),
+                  ),
+                  focusedBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: AppColors.neonRed),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              ':',
+              style: GoogleFonts.spaceMono(color: Colors.white, fontSize: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextFormField(
+                controller: secController,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  hintText: 'SEC',
+                  hintStyle: TextStyle(color: Colors.white24),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white24),
+                  ),
+                  focusedBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: AppColors.neonRed),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('CANCEL', style: TextStyle(color: AppColors.textMuted)),
+          ),
+          TextButton(
+            onPressed: () {
+              final mins = int.tryParse(minController.text) ?? 0;
+              final secs = int.tryParse(secController.text) ?? 0;
+              final totalSeconds = (mins * 60) + secs;
+              if (totalSeconds > 0) {
+                setState(() => _selectedDuration = totalSeconds);
+                Navigator.pop(context);
+              }
+            },
+            child: const Text(
+              'SET',
+              style: TextStyle(color: AppColors.neonRed),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   void _launchCalibration() {
     if (!mounted) return;
     context.push(
-      AppRoutes.calibration,
+      AppRoutes.strengthTest,
       extra: {
         'exerciseType': _selectedExercise,
         'durationSeconds': _selectedDuration,
@@ -45,12 +181,13 @@ class _CalibrationSetupScreenState extends State<CalibrationSetupScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _buildExerciseSelector(),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 12),
+                    _buildRecordsRegistry(),
+                    const SizedBox(height: 24),
                     _buildTimerSelector(),
                     const SizedBox(height: 32),
                     _buildStartButton(),
                     const SizedBox(height: 16),
-                    _buildSkipButton(),
                   ],
                 ),
               ),
@@ -79,16 +216,31 @@ class _CalibrationSetupScreenState extends State<CalibrationSetupScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          Text(
-            'DRILL CONFIGURATION',
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-              letterSpacing: 3,
+          Expanded(
+            child: Text(
+              'STRENGTH TEST CONFIGURATION',
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+                letterSpacing: 2,
+              ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _sectionLabel(String label) {
+    return Text(
+      label,
+      style: GoogleFonts.orbitron(
+        fontSize: 10,
+        fontWeight: FontWeight.w700,
+        color: AppColors.neonRed,
+        letterSpacing: 2,
       ),
     );
   }
@@ -97,26 +249,55 @@ class _CalibrationSetupScreenState extends State<CalibrationSetupScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionLabel('// SELECT EXERCISE'),
+        _sectionLabel('// SELECT TEST EXERCISE'),
         const SizedBox(height: 12),
-        Row(
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+          childAspectRatio: 1.3,
           children: [
-            Expanded(
-              child: _exerciseCard(
-                ExerciseType.squat,
-                Icons.accessibility_new,
-                'SQUATS',
-                'HIP-KNEE ANGLE',
-              ),
+            _exerciseCard(
+              ExerciseType.squat,
+              Icons.accessibility_new,
+              'SQUATS',
+              'HIP-KNEE ANGLE',
+              pb: _profile?['baseline_squats'] as int?,
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _exerciseCard(
-                ExerciseType.pushup,
-                Icons.fitness_center,
-                'PUSH-UPS',
-                'ELBOW-SHOULDER ANGLE',
-              ),
+            _exerciseCard(
+              ExerciseType.pushup,
+              Icons.fitness_center,
+              'PUSH-UPS',
+              'ARM ANGLE',
+              pb: _profile?['baseline_pushups'] as int?,
+            ),
+
+            _exerciseCard(
+              ExerciseType.lunge,
+              Icons.directions_walk,
+              'LUNGES',
+              '90° KNEES',
+            ),
+            _exerciseCard(
+              ExerciseType.situp,
+              Icons.airline_seat_recline_normal,
+              'SIT-UPS',
+              'CORE ANGLE',
+            ),
+
+            _exerciseCard(
+              ExerciseType.plank,
+              Icons.horizontal_rule,
+              'PLANK',
+              'BACK ALIGNMENT',
+            ),
+            _exerciseCard(
+              ExerciseType.wallSit,
+              Icons.event_seat,
+              'WALL SIT',
+              '90° HOLD',
             ),
           ],
         ),
@@ -128,14 +309,18 @@ class _CalibrationSetupScreenState extends State<CalibrationSetupScreen> {
     ExerciseType type,
     IconData icon,
     String label,
-    String sub,
-  ) {
+    String sub, {
+    int? pb,
+  }) {
     final selected = _selectedExercise == type;
     return GestureDetector(
-      onTap: () => setState(() => _selectedExercise = type),
+      onTap: () {
+        FaujAudioEngine().playMouseClick();
+        setState(() => _selectedExercise = type);
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: selected
               ? AppColors.neonRed.withValues(alpha: 0.08)
@@ -164,55 +349,55 @@ class _CalibrationSetupScreenState extends State<CalibrationSetupScreen> {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              color: selected ? AppColors.neonRed : AppColors.textMuted,
-              size: 28,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Icon(
+                  icon,
+                  color: selected ? AppColors.neonRed : AppColors.textMuted,
+                  size: 20,
+                ),
+                if (pb != null && pb > 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: AppColors.neonRed.withValues(alpha: 0.4),
+                      ),
+                    ),
+                    child: Text(
+                      'PB: $pb',
+                      style: GoogleFonts.spaceMono(
+                        fontSize: 8,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.neonRed,
+                      ),
+                    ),
+                  ),
+              ],
             ),
-            const SizedBox(height: 10),
+            const Spacer(),
             Text(
               label,
               style: GoogleFonts.spaceGrotesk(
-                fontSize: 14,
+                fontSize: 12,
                 fontWeight: FontWeight.w900,
                 color: selected
                     ? AppColors.textPrimary
                     : AppColors.textSecondary,
-                letterSpacing: 2,
               ),
             ),
-            const SizedBox(height: 4),
             Text(
               sub,
               style: GoogleFonts.orbitron(
-                fontSize: 7,
+                fontSize: 6,
                 color: selected ? AppColors.neonRed : AppColors.textMuted,
-                letterSpacing: 1,
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 16,
-              child: selected
-                  ? Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      color: AppColors.neonRed,
-                      child: Text(
-                        'SELECTED',
-                        style: GoogleFonts.orbitron(
-                          fontSize: 7,
-                          color: Colors.white,
-                          letterSpacing: 1,
-                        ),
-                      ),
-                    )
-                  : const SizedBox.shrink(),
             ),
           ],
         ),
@@ -224,112 +409,251 @@ class _CalibrationSetupScreenState extends State<CalibrationSetupScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionLabel('// SET TIMER'),
+        _sectionLabel('// SET TEST DURATION'),
         const SizedBox(height: 12),
-        Row(
-          children: _durations.map((d) {
-            final selected = _selectedDuration == d;
-            return Expanded(
-              child: Padding(
-                padding: EdgeInsets.only(right: d != _durations.last ? 8 : 0),
-                child: GestureDetector(
-                  onTap: () => setState(() => _selectedDuration = d),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            ...[30, 60, 90, 120].map((d) {
+              final selected = _selectedDuration == d;
+              return GestureDetector(
+                onTap: () {
+                  FaujAudioEngine().playMouseClick();
+                  setState(() => _selectedDuration = d);
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
                     color: selected
                         ? AppColors.neonRed
                         : const Color(0xFF1A1A1A),
-                    alignment: Alignment.center,
-                    child: Column(
-                      children: [
-                        Text(
-                          '${d}S',
-                          style: GoogleFonts.spaceGrotesk(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900,
-                            color: selected
-                                ? Colors.white
-                                : AppColors.textSecondary,
-                          ),
-                        ),
-                        Text(
-                          d == 60 ? 'DEFAULT' : '',
-                          style: GoogleFonts.orbitron(
-                            fontSize: 7,
-                            color: selected
-                                ? Colors.white70
-                                : Colors.transparent,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                      ],
+                    border: Border.all(
+                      color: selected
+                          ? Colors.transparent
+                          : const Color(0xFF2A2A2A),
+                    ),
+                  ),
+                  child: Text(
+                    '${d}s',
+                    style: GoogleFonts.spaceGrotesk(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      color: selected ? Colors.white : AppColors.textSecondary,
                     ),
                   ),
                 ),
+              );
+            }),
+            GestureDetector(
+              onTap: () {
+                FaujAudioEngine().playMouseClick();
+                setState(() => _selectedDuration = 0);
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: _selectedDuration == 0
+                      ? AppColors.neonRed
+                      : const Color(0xFF1A1A1A),
+                  border: Border.all(
+                    color: _selectedDuration == 0
+                        ? Colors.transparent
+                        : const Color(0xFF2A2A2A),
+                  ),
+                ),
+                child: Text(
+                  _selectedExercise.isHold ? 'MAX HOLD' : 'MAX REPS',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    color: _selectedDuration == 0
+                        ? Colors.white
+                        : AppColors.textSecondary,
+                  ),
+                ),
               ),
-            );
-          }).toList(),
+            ),
+            GestureDetector(
+              onTap: _showCustomDurationDialog,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: !([30, 60, 90, 120, 0].contains(_selectedDuration))
+                      ? AppColors.neonRed
+                      : const Color(0xFF1A1A1A),
+                  border: Border.all(
+                    color: !([30, 60, 90, 120, 0].contains(_selectedDuration))
+                        ? Colors.transparent
+                        : const Color(0xFF2A2A2A),
+                  ),
+                ),
+                child: Text(
+                  !([30, 60, 90, 120, 0].contains(_selectedDuration))
+                      ? (_selectedDuration >= 60
+                            ? '${_selectedDuration ~/ 60}:${(_selectedDuration % 60).toString().padLeft(2, '0')}'
+                            : '${_selectedDuration}s')
+                      : 'CUSTOM',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    color: !([30, 60, 90, 120, 0].contains(_selectedDuration))
+                        ? Colors.white
+                        : AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
 
+  Widget _buildRecordsRegistry() {
+    final records = _allExerciseRecords[_selectedExercise] ?? {};
+    if (records.isEmpty && !_isFetchingRecords) return const SizedBox.shrink();
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.fastOutSlowIn,
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceGlass,
+        border: Border.all(color: AppColors.neonRed.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '// RECORDS REGISTRY',
+                style: GoogleFonts.orbitron(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.neonRed,
+                  letterSpacing: 2,
+                ),
+              ),
+              if (_isFetchingRecords)
+                const SizedBox(
+                  width: 10,
+                  height: 10,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 1,
+                    color: AppColors.neonRed,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (records.isEmpty && !_isFetchingRecords)
+            Text(
+              'NO MISSION DATA RECORDED YET.',
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 12,
+                color: AppColors.textMuted,
+                fontStyle: FontStyle.italic,
+              ),
+            )
+          else
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: records.entries.map((entry) {
+                final duration = entry.key;
+                final best = entry.value;
+                final isMax = duration == 0;
+
+                return Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    border: Border(
+                      left: BorderSide(color: AppColors.neonRed, width: 2),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        isMax ? (_selectedExercise.isHold ? 'MAX HOLD' : 'MAX REPS') : '${duration}S GOAL',
+                        style: GoogleFonts.orbitron(
+                          fontSize: 8,
+                          color: AppColors.textSecondary,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
+                        children: [
+                          Text(
+                            '$best',
+                            style: GoogleFonts.rajdhani(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _selectedExercise.isHold ? 'SEC' : 'REPS',
+                            style: GoogleFonts.rajdhani(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStartButton() {
-    return GestureDetector(
+    return TacticalButton(
       onTap: _launchCalibration,
+      soundType: TacticalSoundType.nav,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 22),
         color: AppColors.neonRed,
         alignment: Alignment.center,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.play_arrow, color: Colors.white, size: 22),
-            const SizedBox(width: 12),
-            Text(
-              'START DRILL',
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-                color: Colors.white,
-                letterSpacing: 3,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSkipButton() {
-    return GestureDetector(
-      onTap: () => context.go(AppRoutes.dashboard),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        alignment: Alignment.center,
         child: Text(
-          'SKIP ASSESSMENT →',
+          'START DRILL',
           style: GoogleFonts.spaceGrotesk(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textMuted,
+            fontSize: 16,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
             letterSpacing: 2,
-            decoration: TextDecoration.underline,
-            decorationColor: AppColors.textMuted,
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _sectionLabel(String text) {
-    return Text(
-      text,
-      style: GoogleFonts.orbitron(
-        fontSize: 9,
-        color: AppColors.neonRed,
-        letterSpacing: 3,
       ),
     );
   }
