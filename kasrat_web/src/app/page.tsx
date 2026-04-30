@@ -56,7 +56,12 @@ export default function UstadTerminal() {
         .eq("code", code.trim().toUpperCase())
         .single();
 
-      if (fetchError || !data) {
+      if (fetchError) {
+        console.error("Supabase Fetch Error:", fetchError);
+        throw new Error("SYSTEM_OFFLINE");
+      }
+      
+      if (!data) {
         throw new Error("INVALID_DEPLOYMENT_CODE");
       }
 
@@ -236,6 +241,23 @@ export default function UstadTerminal() {
                   <div className="absolute bottom-0 left-0 w-8 h-8 border-b border-l border-[#FFFAF1]/30"></div>
 
                   <div className="space-y-6 font-body">
+                    <div className="bg-[#262626] p-4 border-l-4 border-white mb-8">
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <p className="text-[10px] text-white/50 uppercase tracking-widest mb-1 font-bold">OPERATOR</p>
+                          <p className="text-xl font-bold text-white tracking-tighter uppercase leading-none">{terminalData?.user_name || 'RECRUIT'}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[10px] text-white/50 uppercase tracking-widest mb-1 font-bold">STATUS</p>
+                          <p className="text-[10px] font-bold text-yellow-500 uppercase tracking-widest">PENDING_DEPLOYMENT</p>
+                        </div>
+                      </div>
+                      <div className="h-px bg-white/10 mb-4"></div>
+                      <p className="text-[10px] text-white/50 uppercase tracking-widest mb-1 font-bold">MISSION_DIRECTIVE</p>
+                      <p className="text-sm font-bold text-white tracking-tight uppercase">{terminalData?.protocol_title || 'CHALLENGE'}</p>
+                      <p className="text-[10px] text-white/50 uppercase tracking-widest mt-2 font-bold">INTEL: {terminalData?.duration_days || '--'} DAY OPERATION</p>
+                    </div>
+
                     <div className="flex justify-between items-start gap-4">
                       <span className="text-[#FFFAF1]/60 text-sm uppercase tracking-widest font-semibold">Requirement</span>
                       <span className="text-[#FFFAF1]/60 text-sm uppercase tracking-widest font-semibold text-right">Amount</span>

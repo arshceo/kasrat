@@ -11,11 +11,15 @@ import 'dart:math';
 class DeploymentAuthScreen extends StatefulWidget {
   final String protocolId;
   final String protocolTitle;
+  final int durationDays;
+  final String userName;
 
   const DeploymentAuthScreen({
     super.key,
     required this.protocolId,
     required this.protocolTitle,
+    required this.durationDays,
+    required this.userName,
   });
 
   @override
@@ -66,15 +70,36 @@ class _DeploymentAuthScreenState extends State<DeploymentAuthScreen> {
       if (user == null) return;
 
       await Supabase.instance.client.from('terminals').upsert({
-        'id': user.id, // Using user ID as primary key for the terminal session
+        'id': user.id,
         'user_id': user.id,
+        'user_name': widget.userName,
         'code': _authCode,
         'protocol_id': widget.protocolId,
+        'protocol_title': widget.protocolTitle,
+        'duration_days': widget.durationDays,
         'status': 'PENDING',
         'updated_at': DateTime.now().toIso8601String(),
       });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('TERMINAL CODE SYNCED: $_authCode'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
     } catch (e) {
       debugPrint('Sync Error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('SYNC ERROR: CHECK CONNECTION'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 

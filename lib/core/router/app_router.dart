@@ -242,6 +242,8 @@ class AppRouter {
           return DeploymentAuthScreen(
             protocolId: extra['protocolId'] as String? ?? 'UNKNOWN',
             protocolTitle: extra['protocolTitle'] as String? ?? 'CHALLENGE',
+            durationDays: extra['durationDays'] as int? ?? 0,
+            userName: extra['userName'] as String? ?? 'RECRUIT',
           );
         },
       ),

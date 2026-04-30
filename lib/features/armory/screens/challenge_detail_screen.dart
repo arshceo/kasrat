@@ -136,7 +136,20 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> with Widg
     
     // Reset payment status for new deployment session
     final user = Supabase.instance.client.auth.currentUser;
+    String userName = 'RECRUIT';
+
     if (user != null) {
+      // Get user name for terminal display
+      final profile = await Supabase.instance.client
+          .from('profiles')
+          .select('full_name')
+          .eq('id', user.id)
+          .maybeSingle();
+      
+      if (profile != null) {
+        userName = profile['full_name'] ?? 'RECRUIT';
+      }
+
       await Supabase.instance.client
           .from('profiles')
           .update({'is_paid': false})
@@ -150,6 +163,8 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> with Widg
         extra: {
           'protocolId': widget.protocol.id,
           'protocolTitle': widget.protocol.title,
+          'durationDays': widget.protocol.durationDays,
+          'userName': userName,
         },
       );
     }
