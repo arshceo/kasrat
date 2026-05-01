@@ -49,12 +49,6 @@ class DirectiveSection extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           _buildInfoRow(
-            Icons.payments_outlined,
-            'FOOD BUDGET: NOT SET YET',
-            AppColors.neonRed,
-          ),
-          const SizedBox(height: 4),
-          _buildInfoRow(
             Icons.access_time_rounded,
             'WORKOUT TIME: ${workoutTime == '24H' ? 'FLEXIBLE (24H)' : workoutTime}',
             Colors.white,

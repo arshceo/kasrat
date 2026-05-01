@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 import 'package:kasrat_ai/core/constants/app_constants.dart';
 import 'package:kasrat_ai/core/audio/fauj_audio_engine.dart';
@@ -150,77 +151,6 @@ class _WorkoutExecutionScreenState
     });
   }
 
-  Future<void> _handleMissionFailure() async {
-    try {
-      final user = Supabase.instance.client.auth.currentUser;
-      if (user != null) {
-        final profile = await Supabase.instance.client
-            .from('profiles')
-            .select('workout_logs, challenges_failed')
-            .eq('id', user.id)
-            .single();
-        final List<dynamic> logs =
-            (profile['workout_logs'] as List<dynamic>?) ?? [];
-        final int failedCount = (profile['challenges_failed'] as int?) ?? 0;
-
-        final failureLog = {
-          'date': DateTime.now().toIso8601String(),
-          'day': widget.currentDay,
-          'protocolId': widget.protocol.id,
-          'protocolTitle': widget.protocol.title,
-          'status': 'failed',
-          'type': 'CHALLENGE_FAILURE',
-          'reason': 'CRITICAL_DEADLINE_EXPIRED_DURING_SESSION',
-        };
-
-        await Supabase.instance.client
-            .from('profiles')
-            .update({
-              'protocol_id': null,
-              'active_protocol_data': null,
-              'challenges_failed': failedCount + 1,
-              'workout_logs': [...logs, failureLog],
-            })
-            .eq('id', user.id);
-
-        if (mounted) {
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (ctx) => AlertDialog(
-              backgroundColor: AppColors.surfaceContainerHigh,
-              title: Text(
-                'COMMUNICATIONS CUT',
-                style: GoogleFonts.orbitron(
-                  color: AppColors.neonRed,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              content: Text(
-                'Critical deadline expired. The Warzone has reclaimed your deposit. Assignment terminated.',
-                style: GoogleFonts.spaceMono(color: Colors.white),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    context.go(AppRoutes.dashboard);
-                  },
-                  child: Text(
-                    'RETURN TO BASE',
-                    style: GoogleFonts.orbitron(color: AppColors.neonRed),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      debugPrint('Error in mission failure: $e');
-      if (mounted) context.go(AppRoutes.dashboard);
-    }
-  }
 
   void _onBackInvoked() {
     final state = ref.read(workoutProvider);
@@ -394,6 +324,98 @@ class _WorkoutExecutionScreenState
         .completeSet(repsFromCamera, timeToComplete);
   }
 
+  Future<void> _handleMissionFailure() async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user != null) {
+        final profile = await Supabase.instance.client
+            .from('profiles')
+            .select('workout_logs, challenges_failed')
+            .eq('id', user.id)
+            .single();
+        final List<dynamic> logs =
+            (profile['workout_logs'] as List<dynamic>?) ?? [];
+        final int failedCount = (profile['challenges_failed'] as int?) ?? 0;
+
+        final failureLog = {
+          'date': DateTime.now().toIso8601String(),
+          'day': widget.currentDay,
+          'protocolId': widget.protocol.id,
+          'protocolTitle': widget.protocol.title,
+          'status': 'failed',
+          'type': 'CHALLENGE_FAILURE',
+          'reason': 'CRITICAL_DEADLINE_EXPIRED_DURING_SESSION',
+        };
+
+        // 1. Update Profile (Legacy)
+        await Supabase.instance.client
+            .from('profiles')
+            .update({
+              'protocol_id': null,
+              'active_protocol_data': null,
+              'challenges_failed': failedCount + 1,
+              'workout_logs': [...logs, failureLog],
+              'staked_balance': 0,
+              'challenge_status': 'failed',
+            })
+            .eq('id', user.id);
+
+        // 2. Update Daily Challenges Table
+        final latest = await Supabase.instance.client
+            .from('daily_challenges')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('status', 'active')
+            .order('created_at', ascending: false)
+            .limit(1)
+            .maybeSingle();
+
+        if (latest != null) {
+          await Supabase.instance.client
+              .from('daily_challenges')
+              .update({'status': 'failed'})
+              .eq('id', latest['id']);
+        }
+
+        if (mounted) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (ctx) => AlertDialog(
+              backgroundColor: AppColors.surfaceContainerHigh,
+              title: Text(
+                'COMMUNICATIONS CUT',
+                style: GoogleFonts.orbitron(
+                  color: AppColors.neonRed,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              content: Text(
+                'Critical deadline expired. The Warzone has reclaimed your deposit. Assignment terminated.',
+                style: GoogleFonts.spaceMono(color: Colors.white),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    context.go(AppRoutes.dashboard);
+                  },
+                  child: Text(
+                    'RETURN TO BASE',
+                    style: GoogleFonts.orbitron(color: AppColors.neonRed),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error in mission failure: $e');
+      if (mounted) context.go(AppRoutes.dashboard);
+    }
+  }
+
   Future<void> _onFinishAndSync() async {
     setState(() => _isSaving = true);
     try {
@@ -446,6 +468,7 @@ class _WorkoutExecutionScreenState
         }
       }
 
+      // 1. Update Profile
       await Supabase.instance.client
           .from('profiles')
           .update({
@@ -453,8 +476,33 @@ class _WorkoutExecutionScreenState
             'max_pushups': newMaxPushups,
             'max_squats': newMaxSquats,
             'last_workout_date': DateTime.now().toIso8601String(),
+            'last_completed_date': DateTime.now().toIso8601String().split('T')[0],
+            'challenge_status': 'completed',
           })
           .eq('id', user.id);
+
+      // 2. Update Daily Challenges
+      final latest = await Supabase.instance.client
+          .from('daily_challenges')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('status', 'active')
+          .order('created_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+
+      if (latest != null) {
+        await Supabase.instance.client
+            .from('daily_challenges')
+            .update({'status': 'completed'})
+            .eq('id', latest['id']);
+      }
+
+      // SYNC WITH ALARM PROTOCOL: Mark as completed today to prevent penalty
+      final alarmBox = Hive.box('alarm_settings');
+      final now = DateTime.now();
+      await alarmBox.put('last_completed_date', "${now.year}-${now.month}-${now.day}");
+      debugPrint('SYSTEM: Daily Mission Success recorded locally and in DB.');
 
       if (mounted) context.go(AppRoutes.dashboard);
     } catch (e) {

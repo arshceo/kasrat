@@ -1,4 +1,4 @@
-package com.ustadai.kasrat_ai
+package com.bharatace.ustadai
 
 import android.os.Bundle
 import android.util.Log

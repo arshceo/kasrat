@@ -736,44 +736,6 @@ class _ActiveMissionScreenState extends State<ActiveMissionScreen>
             ),
           ),
         ),
-        const SizedBox(height: 16),
-        // TEST ALARM CTA
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: () {
-              context.push(AppRoutes.alarm);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.transparent,
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(4),
-                side: const BorderSide(color: AppColors.neonRed),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'TEST ALARM PROTOCOL',
-                  style: GoogleFonts.orbitron(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.neonRed,
-                    letterSpacing: 3,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Icon(
-                  Icons.warning_amber,
-                  size: 14,
-                  color: AppColors.neonRed,
-                ),
-              ],
-            ),
-          ),
-        ),
       ],
     );
   }

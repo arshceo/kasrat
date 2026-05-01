@@ -1,3 +1,4 @@
 {
+  "/api/authorize-deployment/route": "app/api/authorize-deployment/route.js",
   "/page": "app/page.js"
 }

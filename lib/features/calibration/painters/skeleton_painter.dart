@@ -189,21 +189,22 @@ class SkeletonPainter extends CustomPainter {
   }
 
   Offset _transformPoint(PoseLandmark landmark, Size canvasSize) {
-    bool needsSwap =
-        (rotation == InputImageRotation.rotation90deg ||
-            rotation == InputImageRotation.rotation270deg) &&
-        imageSize.width > imageSize.height;
+    // If ML Kit rotated the image 90/270 degrees, the absolute image bounds swapped.
+    final bool isRotated =
+        rotation == InputImageRotation.rotation90deg ||
+        rotation == InputImageRotation.rotation270deg;
 
-    final sourceWidth = needsSwap ? imageSize.height : imageSize.width;
-    final sourceHeight = needsSwap ? imageSize.width : imageSize.height;
+    final double absoluteImageWidth = isRotated ? imageSize.height : imageSize.width;
+    final double absoluteImageHeight = isRotated ? imageSize.width : imageSize.height;
 
-    final scale = math.max(
-      canvasSize.width / sourceWidth,
-      canvasSize.height / sourceHeight,
-    );
+    final scaleX = canvasSize.width / absoluteImageWidth;
+    final scaleY = canvasSize.height / absoluteImageHeight;
 
-    final offsetX = (canvasSize.width - (sourceWidth * scale)) / 2;
-    final offsetY = (canvasSize.height - (sourceHeight * scale)) / 2;
+    // Use uniform scaling to maintain aspect ratio (BoxFit.cover style)
+    final scale = math.max(scaleX, scaleY);
+
+    final offsetX = (canvasSize.width - (absoluteImageWidth * scale)) / 2;
+    final offsetY = (canvasSize.height - (absoluteImageHeight * scale)) / 2;
 
     double x = (landmark.x * scale) + offsetX;
     double y = (landmark.y * scale) + offsetY;

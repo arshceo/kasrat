@@ -20,9 +20,10 @@ export default function UstadTerminal() {
   const [terminalData, setTerminalData] = useState<any>(null);
   const [pricing, setPricing] = useState({
     collateral: 200.00,
+    fee: 25.00,
     currency: "INR",
     symbol: "₹",
-    total: 200.00
+    total: 225.00
   });
   const [step, setStep] = useState<'idle' | 'done'>('idle');
 
@@ -34,9 +35,10 @@ export default function UstadTerminal() {
     if (!isIndianTimezone) {
       setPricing({
         collateral: 25.00,
+        fee: 2.00,
         currency: "USD",
         symbol: "$",
-        total: 25.00
+        total: 27.00
       });
     }
   }, []);
@@ -48,25 +50,52 @@ export default function UstadTerminal() {
 
     setIsVerifying(true);
     setError("");
+    console.log("Initializing fetch for code:", cleanCode);
+    console.log("Supabase URL:", (supabase as any).supabaseUrl);
 
     try {
       // Real-time verification against Supabase
       const { data, error: fetchError } = await supabase
         .from("terminals")
-        .select("*")
+        .select("id, user_id, user_name, code, protocol_id, protocol_title, duration_days, status")
         .eq("code", cleanCode)
-        .single();
+        .maybeSingle();
 
       if (fetchError) {
-        console.error("Supabase Fetch Error:", fetchError);
-        throw new Error("SYSTEM_OFFLINE");
+        console.error("Supabase Raw Error:", fetchError);
+        console.error("Supabase Error Keys:", Object.keys(fetchError));
+        console.error("Supabase Error String:", String(fetchError));
+        try {
+          console.error("Supabase Error JSON:", JSON.stringify(fetchError, Object.getOwnPropertyNames(fetchError)));
+        } catch (e) {
+          console.error("Could not stringify error");
+        }
+        throw new Error(fetchError.message || "SYSTEM_OFFLINE");
       }
       
       if (!data) {
         throw new Error("INVALID_DEPLOYMENT_CODE");
       }
 
-      setTerminalData(data);
+      console.log("Terminal Data Fetched:", data);
+      
+      // AUTO-HEAL: If name is missing or is a generic rank, try to fetch from profile
+      let resolvedName = data.user_name;
+      if (!resolvedName || resolvedName.toUpperCase() === 'RECRUIT' || resolvedName.toUpperCase() === 'OPERATOR') {
+        console.log("Name missing or generic. Attempting profile sync...");
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("display_name")
+          .eq("id", data.user_id)
+          .maybeSingle();
+        
+        if (profileData?.display_name) {
+          resolvedName = profileData.display_name;
+          console.log("Auto-healed name to:", resolvedName);
+        }
+      }
+
+      setTerminalData({ ...data, user_name: resolvedName });
       setIsValidated(true);
     } catch (err: any) {
       setError(err.message === "INVALID_DEPLOYMENT_CODE"
@@ -97,34 +126,37 @@ export default function UstadTerminal() {
         console.log("Payment Success:", response.razorpay_payment_id);
         
         if (terminalData?.user_id) {
-          // Update profile status with mission enrollment data
-          await supabase
-            .from("profiles")
-            .update({ 
-              is_paid: true,
-              protocol_id: terminalData.protocol_id,
-              protocol_start_date: new Date().toISOString(),
-              active_protocol_data: JSON.stringify({
-                title: terminalData.protocol_title,
-                durationDays: terminalData.duration_days,
-              })
-            })
-            .eq("id", terminalData.user_id);
+          // Call server-side API route — uses service role key to bypass RLS.
+          // The anon key used by this page CANNOT update another user's profile row.
+          const res = await fetch("/api/authorize-deployment", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              terminalId: terminalData.id,
+              userId: terminalData.user_id,
+              protocolId: terminalData.protocol_id,
+              protocolTitle: terminalData.protocol_title,
+              durationDays: terminalData.duration_days,
+              paymentId: response.razorpay_payment_id,
+            }),
+          });
 
-          // Update terminal record
-          await supabase
-            .from("terminals")
-            .update({ 
-              status: 'AUTHORIZED',
-              payment_id: response.razorpay_payment_id 
-            })
-            .eq("code", code.trim().toUpperCase());
+          const result = await res.json();
+
+          if (!res.ok || result.error) {
+            console.error("Authorization API Error:", result.error);
+            setError(`AUTH_FAILED: ${result.error || "SERVER_ERROR"}`);
+            setIsProcessing(false);
+            return;
+          }
+
+          console.log("Deployment authorized successfully via server route.");
         }
 
         setStep('done');
       },
       prefill: {
-        name: "Ustad User",
+        name: terminalData?.user_name || "Ustad User",
         email: "",
         contact: ""
       },
@@ -165,7 +197,7 @@ export default function UstadTerminal() {
       </nav>
 
       {/* Hero Terminal Section */}
-      <header className="relative h-screen w-full flex flex-col items-center justify-center overflow-hidden bg-[#050505]">
+      <header className="relative min-h-screen w-full flex flex-col items-center justify-start bg-[#050505] py-20 md:py-32">
         {/* Background Logo Watermark */}
         <div className="absolute inset-0 flex items-center justify-center opacity-[0.12] pointer-events-none select-none overflow-hidden z-0">
           <Image 
@@ -183,7 +215,7 @@ export default function UstadTerminal() {
         <div className="absolute inset-0 bg-grain z-20"></div>
 
         {/* Content */}
-        <div className="relative z-30 flex flex-col items-center justify-center text-center px-4 mt-16 w-full max-w-5xl">
+        <div className="relative z-30 flex flex-col items-center justify-center text-center px-4 w-full max-w-5xl">
           {!isValidated ? (
             /* State 1: Code Entry */
             <>
@@ -232,7 +264,7 @@ export default function UstadTerminal() {
                 PROTOCOL<br />LOCKED
               </h1>
               <p className="font-body text-base md:text-lg text-[#FFFAF1]/80 max-w-2xl mb-10 font-medium tracking-wide">
-                User recognized. Secure your collateral to activate the AI kinetic engine.
+                Welcome, Operator {terminalData?.user_name?.split(' ')[0] || 'AUTHORIZED_USER'}. Secure your collateral to activate the AI kinetic engine.
               </p>
 
               <div className="w-full max-w-md space-y-6">
@@ -254,7 +286,7 @@ export default function UstadTerminal() {
                       <div className="flex justify-between items-start mb-4">
                         <div>
                           <p className="text-[10px] text-white/50 uppercase tracking-widest mb-1 font-bold">OPERATOR</p>
-                          <p className="text-xl font-bold text-white tracking-tighter uppercase leading-none">{terminalData?.user_name || 'RECRUIT'}</p>
+                          <p className="text-xl font-bold text-white tracking-tighter uppercase leading-none">{terminalData?.user_name || 'AUTHENTICATED OPERATOR'}</p>
                         </div>
                         <div className="text-right">
                           <p className="text-[10px] text-white/50 uppercase tracking-widest mb-1 font-bold">STATUS</p>
@@ -296,9 +328,19 @@ export default function UstadTerminal() {
                           <span className="text-[#FFFAF1] text-base font-medium">Mission Collateral</span>
                           <span className="text-[#FFFAF1] font-bold">{pricing.symbol}{pricing.collateral.toFixed(2)}</span>
                         </div>
-                        <p className="text-[10px] text-[#FFFAF1]/40 uppercase tracking-wider -mt-4">Refundable upon 30-day survival</p>
+                        <p className="text-[10px] text-[#FFFAF1]/40 uppercase tracking-wider -mt-4">
+                          Refundable upon {terminalData?.duration_days || '30'}-day survival
+                        </p>
 
-                        <div className="h-px bg-[#FFFAF1] my-4"></div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-[#FFFAF1] text-sm font-medium opacity-60">AI Engine & Processing Fee</span>
+                          <span className="text-[#FFFAF1] font-bold opacity-60">{pricing.symbol}{pricing.fee.toFixed(2)}</span>
+                        </div>
+                        <p className="text-[10px] text-[#FFFAF1]/40 uppercase tracking-wider -mt-4">
+                          {pricing.currency === 'INR' ? 'Incl. GST + Cloud Infrastructure' : 'AI Processing + Intl. Transaction'}
+                        </p>
+
+                        <div className="h-px bg-[#FFFAF1]/10 my-2"></div>
 
                         <div className="flex justify-between items-center">
                           <span className="text-[#FFFAF1] text-xl font-bold uppercase tracking-tight">TOTAL STAKE</span>
@@ -371,8 +413,10 @@ export default function UstadTerminal() {
       <section className="w-full bg-[#050505] py-24 px-4 sm:px-6 lg:px-8 border-t border-[#1C1C1C] relative z-20">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="font-brutal text-4xl md:text-6xl uppercase tracking-tighter font-semibold text-[#FFFAF1] leading-none mb-4">
-              WHAT IS USTAD AI?
+            <h2 className="font-brutal text-3xl md:text-5xl uppercase tracking-tighter font-bold leading-none mb-6">
+              <span className="bg-[#DC2626] text-[#FFFAF1] px-6 py-3 inline-block shadow-[6px_6px_0px_0px_rgba(220,38,38,0.2)] -rotate-1">
+                WHAT IS USTAD AI?
+              </span>
             </h2>
             <p className="font-body text-base text-[#FFFAF1]/50 max-w-xl mx-auto">
               Not a fitness tracker. A digital drill instructor. We use AI and your own money to force you out of bed.
@@ -394,7 +438,7 @@ export default function UstadTerminal() {
               <div className="text-5xl text-[#DC2626] font-brutal leading-none">02</div>
               <h3 className="font-brutal text-xl uppercase tracking-tight font-bold text-[#FFFAF1]">The Cash Stake</h3>
               <p className="font-body text-sm text-[#FFFAF1]/60 leading-relaxed">
-                Deposit {pricing.symbol}{pricing.collateral.toFixed(0)}. Survive 30 days, get it all back. Quit early, the machine keeps your money.
+                Deposit {pricing.symbol}{pricing.total.toFixed(0)}. Survive {terminalData?.duration_days || '30'} days, get your collateral back. Quit early, the machine keeps your stake.
               </p>
             </div>
 

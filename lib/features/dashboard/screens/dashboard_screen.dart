@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -57,23 +58,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
   }
 
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(dashboardProvider);
-
-    /*
-    // Effect for active workout check
-    if (state.activeProtocol != null && !_hasRedirected) {
-      _checkActiveWorkout(state);
-    }
-    */
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Stack(
         children: [
           const DashboardBackground(),
-          if (state.isSubscriber && state.timeLeft > Duration.zero)
+          if (state.isSubscriber && (state.timeLeft > Duration.zero || state.isCriticalPeriod))
             Positioned(
               left: 0,
               top: 0,

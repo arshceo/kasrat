@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -62,6 +63,8 @@ class WorkoutNotifier extends StateNotifier<WorkoutState> {
   WorkoutNotifier() : super(WorkoutState());
 
   Timer? _ticker;
+  String _protocolId = 'unknown'; // Stored to correctly tag saved state
+  int _currentDay = 1;
 
   void startTicker() {
     _ticker?.cancel();
@@ -86,60 +89,77 @@ class WorkoutNotifier extends StateNotifier<WorkoutState> {
   }) async {
     state = state.copyWith(isLoading: true);
 
-    Map<String, dynamic>? data;
-    bool shouldAttemptResume = resumeData != null;
+    // Only attempt to restore saved state if explicitly resuming
+    _protocolId = protocol.id;
+    _currentDay = currentDay;
 
-    if (shouldAttemptResume) {
-      data = resumeData;
+    if (resumeData != null) {
+      try {
+        final List<dynamic> setsJson = resumeData['sets'];
+        final sets = setsJson.map((s) => ExerciseSet.fromJson(s)).toList();
+        state = state.copyWith(
+          sets: sets,
+          currentIndex: resumeData['currentIndex'] ?? 0,
+          phase: WorkoutPhase.values.firstWhere(
+            (v) => v.name == (resumeData['phase'] ?? 'exercising'),
+            orElse: () => WorkoutPhase.exercising,
+          ),
+          workoutStartTime: resumeData['startTime'] != null
+              ? DateTime.parse(resumeData['startTime'])
+              : null,
+          elapsedDuringActive: Duration(
+            seconds: resumeData['elapsedSeconds'] ?? 0,
+          ),
+          isLoading: false,
+        );
+        startTicker();
+        return;
+      } catch (e) {
+        // Resume data corrupt — fall through to fresh init
+      }
     } else {
-      // We only fallback to shared preferences if we are NOT explicitly 
-      // starting a fresh session. But for now, let's look at prefs 
-      // only if we haven't been given any resumeData.
-      // To fix the "Commence" button issue, we should probably 
-      // have a way to know if it was an EXPLICIT fresh start.
-      // For now, if resumeData is null, we'll still check prefs 
-      // but we'll be more careful.
+      // Check SharedPreferences ONLY if protocol + day match exactly
+      // This prevents stale state from a different protocol/day contaminating fresh sessions
       final prefs = await SharedPreferences.getInstance();
       final savedDataStr = prefs.getString('active_workout_state');
       if (savedDataStr != null) {
         try {
-          data = jsonDecode(savedDataStr);
+          final data = jsonDecode(savedDataStr) as Map<String, dynamic>;
+          final savedProtocolId = data['protocolId'] as String?;
+          final savedDay = data['day'] as int?;
+          final savedPhase = data['phase'] as String?;
+
+          // Only restore if SAME protocol + SAME day + workout was actually in progress
+          if (savedProtocolId == protocol.id &&
+              savedDay == currentDay &&
+              savedPhase != null &&
+              savedPhase != 'briefing' &&
+              savedPhase != 'completed') {
+            final List<dynamic> setsJson = data['sets'];
+            final sets = setsJson.map((s) => ExerciseSet.fromJson(s)).toList();
+            state = state.copyWith(
+              sets: sets,
+              currentIndex: data['currentIndex'] ?? 0,
+              phase: WorkoutPhase.values.firstWhere(
+                (v) => v.name == savedPhase,
+                orElse: () => WorkoutPhase.briefing,
+              ),
+              workoutStartTime: data['startTime'] != null
+                  ? DateTime.parse(data['startTime'])
+                  : null,
+              elapsedDuringActive: Duration(
+                seconds: data['elapsedSeconds'] ?? 0,
+              ),
+              isLoading: false,
+            );
+            startTicker();
+            return;
+          }
         } catch (_) {}
       }
     }
 
-    final storedData = data;
-    if (storedData != null) {
-      try {
-        if (storedData['protocolId'] == protocol.id ||
-            storedData['protocolId'] == 'current') {
-          final List<dynamic> setsJson = storedData['sets'];
-          final sets = setsJson.map((s) => ExerciseSet.fromJson(s)).toList();
-
-          state = state.copyWith(
-            sets: sets,
-            currentIndex: storedData['currentIndex'] ?? 0,
-            phase: WorkoutPhase.values.firstWhere(
-              (v) => v.name == (storedData['phase'] ?? 'exercising'),
-              orElse: () => WorkoutPhase.exercising,
-            ),
-            workoutStartTime: storedData['startTime'] != null
-                ? DateTime.parse(storedData['startTime'])
-                : null,
-            elapsedDuringActive: Duration(
-              seconds: storedData['elapsedSeconds'] ?? 0,
-            ),
-            isLoading: false,
-          );
-          startTicker();
-          return;
-        }
-      } catch (e) {
-        // Fallback to fresh init
-      }
-    }
-
-    // Fresh initialization
+    // Fresh initialization — build sets from protocol
     final sets = _buildSets(protocol, currentDay);
     state = state.copyWith(
       sets: sets,
@@ -311,9 +331,10 @@ class WorkoutNotifier extends StateNotifier<WorkoutState> {
 
   Future<void> saveState() async {
     final prefs = await SharedPreferences.getInstance();
+    // Store the REAL protocol ID and day so stale state is never reused cross-protocol
     final data = {
-      'protocolId': 'current',
-      'day': 1,
+      'protocolId': _protocolId,
+      'day': _currentDay,
       'currentIndex': state.currentIndex,
       'phase': state.phase.name,
       'sets': state.sets.map((s) => s.toJson()).toList(),

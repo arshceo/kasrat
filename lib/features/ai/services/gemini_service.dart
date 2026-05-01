@@ -267,4 +267,28 @@ class GeminiService {
       return "COMMS SILENT. START RUNNING!";
     }
   }
+
+  /// Fetch or generate routine for an AI-generated protocol via ustad-ai-engine.
+  static Future<Map<String, dynamic>> getAIProtocolRoutine({
+    required String protocolId,
+    required String title,
+    required String difficulty,
+    required String focus,
+  }) async {
+    final response = await _supabase.functions.invoke(
+      'ustad-ai-engine',
+      body: {
+        'protocol_id': protocolId,
+        'title': title,
+        'difficulty': difficulty,
+        'focus': focus,
+      },
+    );
+
+    if (response.status != 200) {
+      throw Exception('AI Protocol engine failed: ${response.data}');
+    }
+
+    return response.data as Map<String, dynamic>;
+  }
 }

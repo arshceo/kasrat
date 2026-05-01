@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/services.dart';
 import 'package:kasrat_ai/core/constants/app_constants.dart';
 import 'package:kasrat_ai/core/widgets/tactical_button.dart';
+import 'dart:io';
 
 import 'package:kasrat_ai/core/audio/fauj_audio_engine.dart';
 import '../painters/skeleton_painter.dart';
@@ -462,33 +463,55 @@ class _CalibrationScreenState extends State<CalibrationScreen>
     }
   }
 
+  final _orientations = {
+    DeviceOrientation.portraitUp: 0,
+    DeviceOrientation.landscapeLeft: 90,
+    DeviceOrientation.portraitDown: 180,
+    DeviceOrientation.landscapeRight: 270,
+  };
+
   InputImage? _convertCameraImage(CameraImage image) {
     final camera = _cameras![_currentCameraIndex];
     final sensorOrientation = camera.sensorOrientation;
-    InputImageRotation? rotation;
 
-    if (_isLandscape) {
-      // When orientation is locked to landscape, ML Kit needs to know 
-      // the camera is now rotated 90 degrees relative to the UI coordinate system
-      rotation = InputImageRotation.rotation90deg;
-    } else {
+    // 2. Get the current UI rotation (Landscape vs Portrait)
+    InputImageRotation? rotation;
+    if (Platform.isIOS) {
       rotation = InputImageRotationValue.fromRawValue(sensorOrientation);
+    } else if (Platform.isAndroid) {
+      // Since we don't have a native orientation plugin, we infer from our internal state
+      final deviceOrientation = _isLandscape ? DeviceOrientation.landscapeLeft : DeviceOrientation.portraitUp;
+      var rotationCompensation = _orientations[deviceOrientation];
+      if (rotationCompensation == null) return null;
+
+      if (camera.lensDirection == CameraLensDirection.front) {
+        // front-facing
+        rotationCompensation = (sensorOrientation + rotationCompensation) % 360;
+      } else {
+        // back-facing
+        rotationCompensation = (sensorOrientation - rotationCompensation + 360) % 360;
+      }
+      rotation = InputImageRotationValue.fromRawValue(rotationCompensation);
     }
-    
+
     if (rotation == null) return null;
     _imageRotation = rotation;
 
+    // 3. Assemble the InputImage metadata
     final format = InputImageFormatValue.fromRawValue(image.format.raw);
-    if (format == null) return null;
+    if (format == null ||
+        (Platform.isAndroid && format != InputImageFormat.nv21) ||
+        (Platform.isIOS && format != InputImageFormat.bgra8888)) return null;
 
-    final plane = image.planes.first;
+    if (image.planes.isEmpty) return null;
+
     return InputImage.fromBytes(
-      bytes: plane.bytes,
+      bytes: image.planes[0].bytes,
       metadata: InputImageMetadata(
         size: Size(image.width.toDouble(), image.height.toDouble()),
-        rotation: rotation,
+        rotation: rotation, // <-- THIS FIXES YOUR X/Y AXIS
         format: format,
-        bytesPerRow: plane.bytesPerRow,
+        bytesPerRow: image.planes[0].bytesPerRow,
       ),
     );
   }

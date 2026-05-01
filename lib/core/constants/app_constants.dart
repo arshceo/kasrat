@@ -170,6 +170,7 @@ class AppRoutes {
   static const String dietSetup = '/diet-setup';
   static const String dietPreview = '/diet-preview';
   static const String deploymentAuth = '/deployment-auth';
+  static const String command = '/command';
 }
 
 /// Commercial Constants

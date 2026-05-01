@@ -167,42 +167,6 @@ class CommenceDrillSection extends ConsumerWidget {
             ),
           );
         }),
-        const SizedBox(height: 16),
-
-        // TEST ALARM CTA
-        TacticalButton(
-          soundType: TacticalSoundType.nav,
-          onTap: () => context.push(AppRoutes.alarm),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 20),
-            decoration: BoxDecoration(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: AppColors.neonRed),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'TEST ALARM PROTOCOL',
-                  style: GoogleFonts.orbitron(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.neonRed,
-                    letterSpacing: 3,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Icon(
-                  Icons.warning_amber,
-                  size: 14,
-                  color: AppColors.neonRed,
-                ),
-              ],
-            ),
-          ),
-        ),
       ],
     );
   }

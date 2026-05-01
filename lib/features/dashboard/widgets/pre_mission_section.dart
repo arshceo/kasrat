@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
+import 'package:kasrat_ai/core/constants/app_constants.dart';
 import 'package:kasrat_ai/core/widgets/tactical_button.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart';
@@ -154,7 +155,7 @@ class PreMissionSection extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    const Icon(Icons.copy, size: 18, color: AppColors.neonRed),
+                    Icon(Icons.copy, size: 18, color: AppColors.neonRed),
                   ],
                 ),
               ),
@@ -178,7 +179,7 @@ class PreMissionSection extends StatelessWidget {
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                decoration: const BoxDecoration(color: AppColors.neonRed),
+                decoration: BoxDecoration(color: AppColors.neonRed),
                 alignment: Alignment.center,
                 child: Text(
                   buttonLabel,

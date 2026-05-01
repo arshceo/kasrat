@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:kasrat_ai/core/constants/app_constants.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../ai/services/gemini_service.dart';
 
 /// Screen B-02: EXERTION LOGS — Full workout history, streak data, performance stats.
@@ -16,10 +17,13 @@ class _RecordsScreenState extends State<RecordsScreen> {
   List<Map<String, dynamic>> _logs = [];
   bool _isLoading = true;
 
-  // Mock stats (computed from logs or DB)
   int _totalReps = 0;
   int _completedDays = 0;
   int _failedDays = 0;
+  int _challengesWon = 0;
+  int _challengesLost = 0;
+  int _baselinePushups = 0;
+  int _baselineSquats = 0;
   int? _expandedIndex;
 
   @override
@@ -29,13 +33,52 @@ class _RecordsScreenState extends State<RecordsScreen> {
   }
 
   Future<void> _loadLogs() async {
-    final logs = await GeminiService.getMissionHistory();
+    List<Map<String, dynamic>> historyLogs = [];
+    int won = 0;
+    int lost = 0;
+
+    try {
+      historyLogs = await GeminiService.getMissionHistory();
+      
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user != null) {
+        final profile = await Supabase.instance.client
+            .from('profiles')
+            .select('challenges_won, challenges_lost, baseline_pushups, baseline_squats')
+            .eq('id', user.id)
+            .single();
+        won = (profile['challenges_won'] as int?) ?? 0;
+        lost = (profile['challenges_lost'] as int?) ?? 0;
+        
+        if (mounted) {
+          setState(() {
+            _baselinePushups = (profile['baseline_pushups'] as int?) ?? 0;
+            _baselineSquats = (profile['baseline_squats'] as int?) ?? 0;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching mission history or stats: $e');
+    }
+
+    // Add a system placeholder if empty
+    if (historyLogs.isEmpty) {
+      historyLogs = [
+        {
+          'type': 'SYSTEM_MESSAGE',
+          'title': 'INITIALIZING_DATABASE',
+          'message': 'SCANNING FOR MISSION DATA... NO ENTRIES FOUND. COMPLETE YOUR FIRST DRILL TO POPULATE THIS LOG.',
+          'date': DateTime.now().toIso8601String(),
+        }
+      ];
+    }
+
     if (mounted) {
       int totalReps = 0;
       int completed = 0;
       int failed = 0;
       
-      for (final log in logs) {
+      for (final log in historyLogs) {
         if (log['type'] == 'CHALLENGE_FAILURE') {
            failed++;
            continue;
@@ -48,15 +91,17 @@ class _RecordsScreenState extends State<RecordsScreen> {
         
         if (log['status'] == 'completed') {
           completed++;
-        } else {
+        } else if (log['type'] != 'SYSTEM_MESSAGE') {
           failed++;
         }
       }
       setState(() {
-        _logs = logs;
+        _logs = historyLogs;
         _totalReps = totalReps;
         _completedDays = completed;
         _failedDays = failed;
+        _challengesWon = won;
+        _challengesLost = lost;
         _isLoading = false;
       });
     }
@@ -70,7 +115,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
         child: Column(
           children: [
             _buildHeader(),
-            if (!_isLoading && _logs.isNotEmpty) _buildStatsRow(),
+            if (!_isLoading) _buildStatsRow(),
             Expanded(
               child: _isLoading
                   ? const Center(
@@ -135,19 +180,27 @@ class _RecordsScreenState extends State<RecordsScreen> {
           Row(
             children: [
               Expanded(
+                child: _statBlock('CHALLENGES WON', '$_challengesWon', AppColors.success),
+              ),
+              _verticalDivider(),
+              Expanded(
+                child: _statBlock('CHALLENGES LOST', '$_challengesLost', AppColors.danger),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
                 child: _statBlock('TOTAL REPS', '$_totalReps', AppColors.neonRed),
               ),
               _verticalDivider(),
               Expanded(
                 child: _statBlock(
-                  'COMPLETED',
+                  'SESSIONS DONE',
                   '$_completedDays',
                   AppColors.neonRed,
                 ),
-              ),
-              _verticalDivider(),
-              Expanded(
-                child: _statBlock('FAILED', '$_failedDays', AppColors.danger),
               ),
             ],
           ),
@@ -190,7 +243,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
   }
 
   int _getMaxFromLogs(String keyword) {
-    int max = 0;
+    int max = keyword.contains('PUSHUP') ? _baselinePushups : _baselineSquats;
     for (final log in _logs) {
       final exercises = (log['exercises'] as List?) ?? [];
       for (final ex in exercises) {
@@ -204,50 +257,68 @@ class _RecordsScreenState extends State<RecordsScreen> {
   }
 
   Widget _evolutionItem(String label, int value) {
-    return Column(
-      children: [
-        Text(
-          '$value',
-          style: GoogleFonts.orbitron(
-            fontSize: 20,
-            fontWeight: FontWeight.w900,
-            color: Colors.white,
-          ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLowest.withValues(alpha: 0.5),
+        border: const Border(
+          left: BorderSide(color: AppColors.neonRed, width: 2),
         ),
-        Text(
-          label,
-          style: GoogleFonts.spaceMono(
-            fontSize: 7,
-            color: AppColors.neonRed,
-            letterSpacing: 1,
+      ),
+      child: Column(
+        children: [
+          Text(
+            '$value',
+            style: GoogleFonts.orbitron(
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+              color: Colors.white,
+              letterSpacing: 1,
+            ),
           ),
-        ),
-      ],
+          Text(
+            label,
+            style: GoogleFonts.spaceMono(
+              fontSize: 7,
+              color: AppColors.textSecondary,
+              letterSpacing: 1,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _statBlock(String label, String value, Color color) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: GoogleFonts.spaceGrotesk(
-            fontSize: 28,
-            fontWeight: FontWeight.w900,
-            color: color,
-            height: 1.0,
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        border: Border.all(color: color.withValues(alpha: 0.1)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 32,
+              fontWeight: FontWeight.w900,
+              color: color,
+              height: 1.0,
+            ),
           ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: GoogleFonts.orbitron(
-            fontSize: 7,
-            color: AppColors.textMuted,
-            letterSpacing: 2,
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: GoogleFonts.spaceMono(
+              fontSize: 8,
+              color: AppColors.textMuted,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.5,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -272,6 +343,10 @@ class _RecordsScreenState extends State<RecordsScreen> {
     final isCompleted = status == 'completed';
     final dayNumber = log['day'] as int? ?? (index + 1);
     final isExpanded = _expandedIndex == index;
+
+    if (type == 'SYSTEM_MESSAGE') {
+      return _buildSystemMessageCard(log);
+    }
 
     if (type == 'CHALLENGE_FAILURE') {
       final dateStr = log['date'] as String? ?? '';
@@ -522,59 +597,154 @@ class _RecordsScreenState extends State<RecordsScreen> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(40),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 60,
-              height: 60,
-              color: AppColors.surfaceContainerHighest,
-              alignment: Alignment.center,
-              child: const Icon(
-                Icons.fitness_center,
-                color: AppColors.neonRed,
-                size: 28,
-              ),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          _buildTerminalPlaceholder('LOG_A: NO_DATA'),
+          const SizedBox(height: 12),
+          _buildTerminalPlaceholder('LOG_B: NO_DATA'),
+          const SizedBox(height: 12),
+          _buildTerminalPlaceholder('LOG_C: NO_DATA'),
+          const SizedBox(height: 40),
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  color: AppColors.surfaceContainerHighest,
+                  alignment: Alignment.center,
+                  child: const Icon(
+                    Icons.fitness_center,
+                    color: AppColors.neonRed,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  '// DATABASE EMPTY',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.danger,
+                    letterSpacing: 3,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'YOU HAVE PROVEN NOTHING YET.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.orbitron(
+                    fontSize: 10,
+                    color: AppColors.textSecondary,
+                    letterSpacing: 1,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  color: AppColors.surfaceContainerHighest,
+                  child: Text(
+                    '// COMMENCE DRILL FROM COMMAND TAB',
+                    style: GoogleFonts.orbitron(
+                      fontSize: 9,
+                      color: AppColors.neonRed,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 20),
-            Text(
-              '// DATABASE EMPTY',
-              style: GoogleFonts.spaceGrotesk(
-                fontSize: 14,
-                fontWeight: FontWeight.w900,
-                color: AppColors.danger,
-                letterSpacing: 3,
-              ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSystemMessageCard(Map<String, dynamic> log) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        border: Border.all(color: AppColors.neonRed.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline, color: AppColors.neonRed, size: 16),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  log['title']?.toString() ?? 'SYSTEM_MESSAGE',
+                  style: GoogleFonts.spaceMono(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.neonRed,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  log['message']?.toString() ?? '',
+                  style: GoogleFonts.spaceMono(
+                    fontSize: 8,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              'YOU HAVE PROVEN NOTHING YET.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.orbitron(
-                fontSize: 10,
-                color: AppColors.textSecondary,
-                letterSpacing: 1,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Container(
-              padding: const EdgeInsets.all(16),
-              color: AppColors.surfaceContainerHighest,
-              child: Text(
-                '// COMMENCE DRILL FROM COMMAND TAB',
-                style: GoogleFonts.orbitron(
-                  fontSize: 9,
-                  color: AppColors.neonRed,
-                  letterSpacing: 2,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTerminalPlaceholder(String label) {
+    return Container(
+      height: 60,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        border: Border.all(color: const Color(0xFF1A1A1A)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 20,
+            color: const Color(0xFF1A1A1A),
+          ),
+          const SizedBox(width: 16),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: GoogleFonts.spaceMono(
+                  fontSize: 10,
+                  color: const Color(0xFF2A2A2A),
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1,
                 ),
               ),
-            ),
-          ],
-        ),
+              const SizedBox(height: 4),
+              Text(
+                'STATUS: WAITING_FOR_SYNC...',
+                style: GoogleFonts.spaceMono(
+                  fontSize: 7,
+                  color: const Color(0xFF1A1A1A),
+                  letterSpacing: 1,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

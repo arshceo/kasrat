@@ -1,26 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
-import '../../../main.dart';
+import 'package:kasrat_ai/features/alarm/services/alarm_service.dart';
 import 'package:kasrat_ai/core/constants/app_constants.dart';
+import 'package:go_router/go_router.dart';
 
 class AlarmScreen extends StatelessWidget {
+  const AlarmScreen({super.key});
+
   void _dismissAndStartDeathClock(BuildContext context) async {
-    // Stop the audio player here
-    // _audioPlayer.stop();
+    // 1. Stop the ringing alarm
+    await AlarmProtocolService.stopAlarm();
 
-    // Schedule the Penalty Check for exactly 2 hours from now
-    // ID 200 is specifically for the penalty background check
-    await AndroidAlarmManager.oneShot(
-      const Duration(hours: 2),
-      200,
-      penaltyCheckCallback, // This calls the isolate in main.dart
-      exact: true,
-      wakeup: true,
-    );
-
-    print('SYSTEM: 2-Hour Death Clock Started');
-    Navigator.pop(context);
+    // 2. The 2-hour deadline was already set when the alarm was scheduled.
+    // We just need to navigate the user to the Command Screen to see the countdown.
+    debugPrint('SYSTEM: Alarm Dismissed. Proceeding to COMMAND.');
+    context.go(AppRoutes.command);
   }
 
   @override

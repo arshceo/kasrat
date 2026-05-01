@@ -1,20 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:kasrat_ai/core/constants/app_constants.dart';
 import 'package:kasrat_ai/core/widgets/tactical_button.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:kasrat_ai/features/dashboard/providers/dashboard_provider.dart';
 
-class AppShell extends StatefulWidget {
+class AppShell extends ConsumerStatefulWidget {
   final StatefulNavigationShell navigationShell;
 
   const AppShell({super.key, required this.navigationShell});
 
   @override
-  State<AppShell> createState() => _AppShellState();
+  ConsumerState<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends ConsumerState<AppShell> {
   bool _isLoading = true;
   bool _isPaid = false;
   bool _isOnboardingComplete = false;
@@ -48,7 +51,7 @@ class _AppShellState extends State<AppShell> {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) context.go(AppRoutes.exerciseSelection);
           });
-          return; // Keep loading true so we don't flash dashboard
+          return; 
         }
 
         setState(() {
@@ -68,6 +71,102 @@ class _AppShellState extends State<AppShell> {
     }
   }
 
+  Future<bool> _showExitPrompt(DashboardState state) async {
+    String title = 'EXIT MISSION?';
+    String message = 'MISSION PROGRESS WILL BE SUSPENDED.';
+    String primaryActionLabel = 'EXIT';
+    bool isHardPrompt = false;
+
+    if (state.isSubscriber && state.protocolTitle != 'NO ACTIVE MISSION') {
+      if (!state.isWorkoutDoneToday) {
+        title = 'DISCIPLINE REQUIRED';
+        message = 'FINISH YOUR DAILY WORKOUT FIRST. DISCIPLINE IS NON-NEGOTIABLE.';
+        primaryActionLabel = 'STAY & FINISH';
+        isHardPrompt = true;
+      }
+    } else if (state.pendingCode != null) {
+      title = 'AUTH PENDING';
+      message = 'DEPLOYMENT AUTHENTICATION PENDING. COMPLETE AUTH ON THE WEBSITE TO START YOUR MISSION.';
+      primaryActionLabel = 'CONTINUE AUTH';
+      isHardPrompt = true;
+    } else if (state.protocolTitle == 'NO ACTIVE MISSION') {
+      title = 'NO ACTIVE MISSION';
+      message = 'NO ACTIVE MISSION. JOIN A CHALLENGE TO COMMENCE OPERATIONS.';
+      primaryActionLabel = 'JOIN CHALLENGE';
+      isHardPrompt = true;
+    }
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.black,
+        shape: const RoundedRectangleBorder(
+          side: BorderSide(color: AppColors.neonRed, width: 2),
+        ),
+        title: Text(
+          title,
+          style: GoogleFonts.orbitron(
+            color: AppColors.neonRed,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 2,
+            fontSize: 18,
+          ),
+        ),
+        content: Text(
+          message,
+          style: GoogleFonts.inter(
+            color: Colors.white,
+            fontSize: 14,
+            height: 1.5,
+          ),
+        ),
+        actions: [
+          if (isHardPrompt)
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(
+                'FORCE EXIT',
+                style: GoogleFonts.orbitron(color: Colors.white30, fontSize: 10),
+              ),
+            )
+          else
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(
+                'CANCEL',
+                style: GoogleFonts.orbitron(color: Colors.white70, fontSize: 12),
+              ),
+            ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.neonRed,
+              foregroundColor: Colors.white,
+              shape: const BeveledRectangleBorder(),
+            ),
+            onPressed: () {
+              if (primaryActionLabel == 'JOIN CHALLENGE') {
+                Navigator.of(context).pop(false);
+                widget.navigationShell.goBranch(1);
+              } else if (primaryActionLabel == 'CONTINUE AUTH') {
+                Navigator.of(context).pop(false);
+              } else if (primaryActionLabel == 'STAY & FINISH') {
+                Navigator.of(context).pop(false);
+              } else {
+                Navigator.of(context).pop(true);
+              }
+            },
+            child: Text(
+              primaryActionLabel,
+              style: GoogleFonts.orbitron(fontWeight: FontWeight.bold, fontSize: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return result ?? false;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -80,10 +179,20 @@ class _AppShellState extends State<AppShell> {
     }
 
     final int currentIndex = widget.navigationShell.currentIndex;
+    final state = ref.watch(dashboardProvider);
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: widget.navigationShell,
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
+        final shouldPop = await _showExitPrompt(state);
+        if (shouldPop && mounted) {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: widget.navigationShell,
       // Minimalist BottomNavBar
       bottomNavigationBar: Container(
         height: 80,
@@ -108,7 +217,7 @@ class _AppShellState extends State<AppShell> {
               index: 1,
               currentIndex: currentIndex,
               icon: 'armory',
-              label: 'CHALLENGES',
+              label: 'CHALLENGE',
             ),
             _buildNavItem(
               context,
@@ -121,21 +230,15 @@ class _AppShellState extends State<AppShell> {
               context,
               index: 3,
               currentIndex: currentIndex,
-              icon: 'receipt_long',
-              label: 'RECORDS',
-            ),
-            _buildNavItem(
-              context,
-              index: 4,
-              currentIndex: currentIndex,
               icon: 'settings_accessibility',
               label: 'PROFILE',
             ),
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildNavItem(
     BuildContext context, {

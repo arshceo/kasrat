@@ -31,7 +31,11 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> with Widg
   bool _isInternational = false;
   String _currency = 'INR';
   String _currencySymbol = '₹';
+  String? _activeProtocolId;
+  bool _isCurrentlyActive = false;
 
+
+  String _userName = 'RECRUIT';
 
   
   @override
@@ -64,7 +68,6 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> with Widg
   }
 
   Future<void> _fetchProfileStatus() async {
-    _isPaid = false; // FORCED FALSE FOR TESTING
     _isLoading = true;
     
     try {
@@ -77,10 +80,19 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> with Widg
             .maybeSingle();
 
         if (profileMap != null && mounted) {
+          final dbName = profileMap['display_name'] as String?;
+          final metaName = user.userMetadata?['full_name'] as String?;
+          final finalName = dbName ?? metaName ?? 'RECRUIT';
+          
+          debugPrint('SYSTEM: Fetched Profile Name: $dbName, Metadata Name: $metaName');
+          
           setState(() {
             _userPushups = profileMap['baseline_pushups'] ?? 0;
             _userSquats = profileMap['baseline_squats'] ?? 0;
-            // _isPaid = profileMap['is_paid'] ?? false; // Disabled for testing
+            _userName = finalName;
+            _isPaid = profileMap['is_paid'] ?? false;
+            _activeProtocolId = profileMap['protocol_id'];
+            _isCurrentlyActive = _isPaid && _activeProtocolId != null;
             _hasCompletedBaseline = _userPushups > 0 && _userSquats > 0;
             _isLoading = false;
           });
@@ -93,6 +105,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> with Widg
       if (mounted) setState(() => _isLoading = false);
     }
   }
+
 
   Future<void> _pickCustomTime() async {
     final picked = await showTimePicker(
@@ -171,7 +184,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> with Widg
           'protocolId': widget.protocol.id,
           'protocolTitle': widget.protocol.title,
           'durationDays': widget.protocol.durationDays,
-          'userName': 'RECRUIT', 
+          'userName': _userName, 
         },
       );
     }
@@ -1038,36 +1051,46 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> with Widg
                   ? const SizedBox.shrink()
                   : TacticalButton(
                       soundType: TacticalSoundType.tap,
-                      onTap: _hasCompletedBaseline
-                          ? _showLockMissionModal
-                          : () {
-                              HapticFeedback.heavyImpact();
-                              context.push(AppRoutes.strengthTestSetup);
-                            },
+                      onTap: _isCurrentlyActive
+                          ? null // Disabled if already active
+                          : (_hasCompletedBaseline
+                              ? _showLockMissionModal
+                              : () {
+                                  HapticFeedback.heavyImpact();
+                                  context.push(AppRoutes.strengthTestSetup);
+                                }),
                       child: Container(
                         width: double.infinity,
-                        color: AppColors.neonRed,
+                        color: _isCurrentlyActive 
+                            ? Colors.grey[900] 
+                            : AppColors.neonRed,
                         padding: const EdgeInsets.symmetric(vertical: 24),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              _hasCompletedBaseline
-                                  ? 'LOCK MISSION'
-                                  : 'ASSESSMENT REQUIRED',
+                              _isCurrentlyActive
+                                  ? (_activeProtocolId == widget.protocol.id 
+                                      ? 'CHALLENGE ACTIVE' 
+                                      : 'MISSION IN PROGRESS')
+                                  : (_hasCompletedBaseline
+                                      ? 'LOCK MISSION'
+                                      : 'ASSESSMENT REQUIRED'),
                               style: GoogleFonts.spaceGrotesk(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w900,
-                                color: Colors.white,
+                                color: _isCurrentlyActive ? Colors.white38 : Colors.white,
                                 letterSpacing: 1,
                               ),
                             ),
                             const SizedBox(width: 12),
                             Icon(
-                              _hasCompletedBaseline
-                                  ? Icons.lock_open
-                                  : Icons.warning_amber_rounded,
-                              color: Colors.white,
+                              _isCurrentlyActive
+                                  ? Icons.lock
+                                  : (_hasCompletedBaseline
+                                      ? Icons.lock_open
+                                      : Icons.warning_amber_rounded),
+                              color: _isCurrentlyActive ? Colors.white38 : Colors.white,
                               size: 28,
                             ),
                           ],

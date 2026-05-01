@@ -46,3 +46,7 @@ app.*.map.json
 node_modules/
 kasrat_web/node_modules/
 .next/
+.env*
+android/key.properties
+android/app/*.jks
+android/app/*.keystore

@@ -17,6 +17,7 @@ import '../../features/records/screens/records_screen.dart';
 import '../../features/armory/screens/challenge_detail_screen.dart';
 import '../../features/armory/models/protocol.dart';
 import '../../features/armory/screens/deployment_auth_screen.dart';
+import '../../features/armory/screens/command_screen.dart';
 import '../../features/diet/screens/daily_rations_screen.dart';
 import '../../features/diet/screens/diet_setup_screen.dart';
 import '../../features/diet/screens/diet_preview_screen.dart';
@@ -148,15 +149,6 @@ class AppRouter {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: AppRoutes.records,
-                pageBuilder: (context, state) =>
-                    const NoTransitionPage(child: RecordsScreen()),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
                 path: AppRoutes.profile,
                 pageBuilder: (context, state) =>
                     const NoTransitionPage(child: ProfileScreen()),
@@ -246,6 +238,10 @@ class AppRouter {
             userName: extra['userName'] as String? ?? 'RECRUIT',
           );
         },
+      ),
+      GoRoute(
+        path: AppRoutes.command,
+        builder: (context, state) => const CommandScreen(),
       ),
     ],
   );
