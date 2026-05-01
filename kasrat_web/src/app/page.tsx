@@ -26,6 +26,7 @@ export default function UstadTerminal() {
     total: 225.00
   });
   const [step, setStep] = useState<'idle' | 'done'>('idle');
+  const [isReviewer, setIsReviewer] = useState(false);
 
   // Detect region and set dynamic pricing
   useEffect(() => {
@@ -48,11 +49,16 @@ export default function UstadTerminal() {
     const cleanCode = code.trim().replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
     if (!cleanCode) return;
 
+    // REVIEWER BYPASS: Phase 1 (Enter Magic Code)
+    if (cleanCode === "REVIEW26") {
+      setIsReviewer(true);
+      setCode(""); // Clear it so they can enter their terminal code
+      return;
+    }
+
     setIsVerifying(true);
     setError("");
-    console.log("Initializing fetch for code:", cleanCode);
-    console.log("Supabase URL:", (supabase as any).supabaseUrl);
-
+    
     try {
       // Real-time verification against Supabase
       const { data, error: fetchError } = await supabase
@@ -61,46 +67,32 @@ export default function UstadTerminal() {
         .eq("code", cleanCode)
         .maybeSingle();
 
-      if (fetchError) {
-        console.error("Supabase Raw Error:", fetchError);
-        console.error("Supabase Error Keys:", Object.keys(fetchError));
-        console.error("Supabase Error String:", String(fetchError));
-        try {
-          console.error("Supabase Error JSON:", JSON.stringify(fetchError, Object.getOwnPropertyNames(fetchError)));
-        } catch (e) {
-          console.error("Could not stringify error");
-        }
-        throw new Error(fetchError.message || "SYSTEM_OFFLINE");
-      }
-      
-      if (!data) {
-        throw new Error("INVALID_DEPLOYMENT_CODE");
+      if (fetchError) throw new Error(fetchError.message || "SYSTEM_OFFLINE");
+      if (!data) throw new Error("INVALID_DEPLOYMENT_CODE");
+
+      setTerminalData(data);
+
+      // REVIEWER BYPASS: Phase 2 (Automatic Authorization)
+      if (isReviewer) {
+        setIsProcessing(true);
+        const { error: authError } = await supabase
+          .from("terminals")
+          .update({ 
+            status: 'AUTHORIZED',
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", data.id);
+
+        if (authError) throw authError;
+        setStep('done');
+        setIsProcessing(false);
+        setIsVerifying(false);
+        return;
       }
 
-      console.log("Terminal Data Fetched:", data);
-      
-      // AUTO-HEAL: If name is missing or is a generic rank, try to fetch from profile
-      let resolvedName = data.user_name;
-      if (!resolvedName || resolvedName.toUpperCase() === 'RECRUIT' || resolvedName.toUpperCase() === 'OPERATOR') {
-        console.log("Name missing or generic. Attempting profile sync...");
-        const { data: profileData } = await supabase
-          .from("profiles")
-          .select("display_name")
-          .eq("id", data.user_id)
-          .maybeSingle();
-        
-        if (profileData?.display_name) {
-          resolvedName = profileData.display_name;
-          console.log("Auto-healed name to:", resolvedName);
-        }
-      }
-
-      setTerminalData({ ...data, user_name: resolvedName });
       setIsValidated(true);
     } catch (err: any) {
-      setError(err.message === "INVALID_DEPLOYMENT_CODE"
-        ? "CODE NOT RECOGNIZED. CHECK APP."
-        : "SYSTEM_OFFLINE. TRY AGAIN.");
+      setError(err.message);
     } finally {
       setIsVerifying(false);
     }
@@ -235,10 +227,16 @@ export default function UstadTerminal() {
                     setError("");
                   }}
                   onKeyDown={(e) => e.key === 'Enter' && handleInitialize()}
-                  placeholder="e.g., BX9482"
+                  placeholder={code === "REVIEW26" ? "ENTER TERMINAL CODE" : "e.g., BX9482"}
                   disabled={isVerifying}
                   className={`w-full bg-transparent border-4 ${error ? 'border-red-600' : 'border-[#FFFAF1]/30'} px-6 py-4 text-3xl md:text-4xl font-brutal uppercase text-center tracking-[0.2em] focus:border-[#FFFAF1] outline-none transition-all placeholder:text-[#FFFAF1]/10 ${isVerifying ? 'opacity-50' : 'opacity-100'}`}
                 />
+
+                {code === "REVIEW26" && (
+                  <p className="text-yellow-500 font-brutal text-xs uppercase tracking-widest animate-pulse">
+                    REVIEWER MODE ACTIVE. ENTER THE 6-DIGIT CODE FROM YOUR PHONE NEXT.
+                  </p>
+                )}
 
                 {error && (
                   <p className="text-red-500 font-brutal text-xs uppercase tracking-widest animate-pulse">
