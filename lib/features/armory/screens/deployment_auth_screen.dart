@@ -307,7 +307,7 @@ class _DeploymentAuthScreenState extends ConsumerState<DeploymentAuthScreen> {
       }
     }
 
-    final uri = Uri.parse('https://ustad.ai');
+    final uri = Uri.parse('https://ustadai.vercel.app/');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
