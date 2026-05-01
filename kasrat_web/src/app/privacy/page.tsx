@@ -45,7 +45,7 @@ export default function PrivacyPolicy() {
 
         <section className="space-y-4">
           <h2 className="text-2xl font-semibold">5. Contact Us</h2>
-          <p>If you have questions about this policy, contact us at: <strong>arshceo@gmail.com</strong></p>
+          <p>If you have questions about this policy, contact us at: <strong>arshdeepsinghex@gmail.com</strong></p>
         </section>
 
         <div className="pt-12 border-t border-[#FFFAF1]/10 text-center">

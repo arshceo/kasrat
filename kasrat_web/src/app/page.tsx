@@ -491,20 +491,20 @@ export default function UstadTerminal() {
             <div className="flex items-center gap-3 bg-black border border-[#FFFAF1]/20 px-6 py-3 rounded-xl w-full sm:w-auto justify-center opacity-60 relative overflow-hidden group shadow-2xl cursor-help">
               <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] z-20 flex items-center justify-center">
                 <span className="text-[8px] font-brutal uppercase tracking-[0.2em] text-[#FFFAF1] bg-[#0A0A0A] px-2 py-1 border border-[#FFFAF1]/20">COMING SOON</span>
-              </div>
-              <svg className="w-8 h-8 text-white z-10" viewBox="0 0 384 512" fill="currentColor">
-                <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z" />
-              </svg>
-              <div className="text-left z-10">
-                <div className="text-[10px] tracking-tight text-[#FFFAF1]/80 font-medium leading-none mb-1">Download on the</div>
-                <div className="text-lg font-bold font-body leading-none text-[#FFFAF1] tracking-tight">App Store</div>
-              </div>
-            </div>
+      {/* Footer */}
+      <footer className="py-12 border-t border-[#FFFAF1]/5 bg-black/50 backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-red-600 rounded-sm flex items-center justify-center font-bold text-black rotate-45">U</div>
+            <span className="font-brutal text-xl tracking-tighter uppercase italic">USTAD AI</span>
           </div>
-
-          <div className="w-12 h-px bg-[#FFFAF1]/10"></div>
-          <p className="font-body text-[10px] text-[#FFFAF1]/30 tracking-[0.2em] uppercase">
-            © 2026 USTAD AI. ALL RIGHTS RESERVED. NO WEAK LINKS.
+          <div className="flex gap-8 text-sm font-mono text-[#FFFAF1]/40 uppercase tracking-widest">
+            <a href="/privacy" className="hover:text-red-500 transition-colors">Privacy Policy</a>
+            <span className="select-none">|</span>
+            <a href="mailto:arshdeepsinghex@gmail.com" className="hover:text-red-500 transition-colors">Support</a>
+          </div>
+          <p className="text-[10px] font-mono text-[#FFFAF1]/20 uppercase">
+            © 2026 USTAD AI. ALL RIGHTS RESERVED.
           </p>
         </div>
       </footer>
