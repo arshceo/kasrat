@@ -37,6 +37,12 @@
       "regex": "^/checkout(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/checkout(?:/)?$"
+    },
+    {
+      "page": "/privacy",
+      "regex": "^/privacy(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/privacy(?:/)?$"
     }
   ],
   "dataRoutes": [],
