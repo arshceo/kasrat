@@ -1,4 +1,6 @@
 {
+  "/_not-found/page": "app/_not-found/page.js",
   "/api/authorize-deployment/route": "app/api/authorize-deployment/route.js",
+  "/checkout/page": "app/checkout/page.js",
   "/page": "app/page.js"
 }

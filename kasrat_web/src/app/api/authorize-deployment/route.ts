@@ -3,13 +3,14 @@ import { createClient } from "@supabase/supabase-js";
 
 // This route runs SERVER-SIDE with the service role key, bypassing RLS.
 // The website's anon key cannot update other users' profiles — this does.
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!, // Never expose this client-side
-  { auth: { persistSession: false } }
-);
+export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
+  const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } }
+  );
   try {
     const body = await req.json();
     const { terminalId, userId, protocolId, protocolTitle, durationDays, paymentId } = body;

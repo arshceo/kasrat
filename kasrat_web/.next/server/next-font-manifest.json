@@ -1,12 +1,1 @@
-{
-  "app": {
-    "[project]/src/app/page": [
-      "static/media/83afe278b6a6bb3c-s.p.3a6ba036.woff2",
-      "static/media/6ad1cda2f16975ee-s.p.b58dc1ff.woff2",
-      "static/media/0acc7fdf55eb3220-s.p.532ccaa1.woff2"
-    ]
-  },
-  "appUsingSizeAdjust": true,
-  "pages": {},
-  "pagesUsingSizeAdjust": false
-}
+{"pages":{},"app":{},"appUsingSizeAdjust":false,"pagesUsingSizeAdjust":false}
